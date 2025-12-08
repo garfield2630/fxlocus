@@ -62,20 +62,21 @@ export function AnimatedKlineBackground() {
   const nodesRef = useRef<Node[] | null>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || typeof window === "undefined") return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
     function resize() {
-      const rect = canvas.parentElement?.getBoundingClientRect();
+      const canvasEl = canvasRef.current;
+      if (!canvasEl || typeof window === "undefined") return;
+
+      const ctx = canvasEl.getContext("2d");
+      if (!ctx) return;
+
+      const rect = canvasEl.parentElement?.getBoundingClientRect();
       const width = rect?.width ?? window.innerWidth;
       const height = rect?.height ?? 420;
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
+      canvasEl.width = width * dpr;
+      canvasEl.height = height * dpr;
+      canvasEl.style.width = `${width}px`;
+      canvasEl.style.height = `${height}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       const nodes: Node[] = [];
@@ -91,16 +92,27 @@ export function AnimatedKlineBackground() {
       nodesRef.current = nodes;
     }
 
-    resize();
-    window.addEventListener("resize", resize);
-
     let frameId: number;
     let start = performance.now();
 
+    const canvasElInitial = canvasRef.current;
+    if (!canvasElInitial || typeof window === "undefined") return;
+    const ctx = canvasElInitial.getContext("2d");
+    if (!ctx) return;
+
+    resize();
+    window.addEventListener("resize", resize);
+
     const render = (now: number) => {
       const t = (now - start) / 1000;
-      const w = canvas.clientWidth;
-      const h = canvas.clientHeight;
+      const canvasEl = canvasRef.current;
+      if (!canvasEl) {
+        frameId = requestAnimationFrame(render);
+        return;
+      }
+
+      const w = canvasEl.clientWidth;
+      const h = canvasEl.clientHeight;
       if (w === 0 || h === 0) {
         frameId = requestAnimationFrame(render);
         return;
