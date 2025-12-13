@@ -1,0 +1,21 @@
+{
+  "title": "思想文章",
+  "lead": "交易心理、市场认知与K线本质的系统文章。每篇尽量给出动作清单与证伪标准。",
+  "searchPlaceholder": "搜索文章标题或关键词…",
+  "filters": {
+    "all": "全部",
+    "mind": "交易心理",
+    "market": "市场认知",
+    "price": "K线本质"
+  },
+  "sort": {
+    "latest": "最新",
+    "popular": "热门"
+  },
+  "detail": {
+    "readingTime": "阅读时长",
+    "checklist": "可执行清单",
+    "falsification": "证伪标准与误区",
+    "related": "相关文章"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "title": "Insights",
+  "lead": "Systematic writing on Mind, Market, and Price Action—with action checklists and falsification criteria.",
+  "searchPlaceholder": "Search by title or keyword…",
+  "filters": {
+    "all": "All",
+    "mind": "Mind",
+    "market": "Market",
+    "price": "Price Action"
+  },
+  "sort": {
+    "latest": "Latest",
+    "popular": "Popular"
+  },
+  "detail": {
+    "readingTime": "Reading time",
+    "checklist": "Action checklist",
+    "falsification": "Falsification & pitfalls",
+    "related": "Related"
+  }
+}

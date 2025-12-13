@@ -1,7 +1,5 @@
-﻿"use client";
+import { redirect } from "next/navigation";
 
-import { AdminLayout } from "@/components/admin/AdminLayout";
-
-export default function AdminSystemHome() {
-  return <AdminLayout />;
+export default function AdminHome() {
+  redirect("/zh/system");
 }

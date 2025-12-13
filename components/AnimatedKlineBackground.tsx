@@ -18,16 +18,70 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
 interface Node {
   x: number;
   y: number;
+  targetX: number;
+  targetY: number;
   radius: number;
   phase: number;
 }
 
+interface Ripple {
+  x: number;
+  y: number;
+  startMs: number;
+  durationMs: number;
+  maxRadius: number;
+}
+
+function nodeDrift(n: Node, t: number) {
+  return {
+    x: n.x + Math.sin(t * 0.55 + n.phase) * 1.1,
+    y: n.y + Math.cos(t * 0.48 + n.phase * 1.7) * 1.1
+  };
+}
+
+function drawRipples(ctx: CanvasRenderingContext2D, ripples: Ripple[], nowMs: number) {
+  if (ripples.length === 0) return;
+
+  const easeOutCubic = (x: number) => 1 - Math.pow(1 - x, 3);
+
+  const next: Ripple[] = [];
+  ctx.save();
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = "rgba(59,130,246,0.28)";
+
+  for (const r of ripples) {
+    const ageMs = nowMs - r.startMs;
+    if (ageMs < 0) {
+      next.push(r);
+      continue;
+    }
+
+    const p = ageMs / r.durationMs;
+    if (p >= 1) continue;
+
+    const radius = easeOutCubic(p) * r.maxRadius;
+    const alpha = Math.sin(Math.PI * p) * 0.28;
+    ctx.lineWidth = 1.25 - p * 0.25;
+    ctx.strokeStyle = `rgba(59,130,246,${alpha.toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    next.push(r);
+  }
+
+  ctx.restore();
+  ripples.splice(0, ripples.length, ...next);
+}
+
 function drawNeural(ctx: CanvasRenderingContext2D, nodes: Node[], t: number, w: number, h: number) {
+  const positions = nodes.map((n) => nodeDrift(n, t));
+
   ctx.lineWidth = 1.1;
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
-      const a = nodes[i];
-      const b = nodes[j];
+      const a = positions[i];
+      const b = positions[j];
       const dx = a.x - b.x;
       const dy = a.y - b.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -43,16 +97,18 @@ function drawNeural(ctx: CanvasRenderingContext2D, nodes: Node[], t: number, w: 
     }
   }
 
-  for (const n of nodes) {
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i];
+    const p = positions[i];
     const pulse = 0.4 + 0.3 * Math.sin(t * 2 + n.phase);
     const r = n.radius * (0.7 + pulse);
-    const gradient = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r);
+    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
     gradient.addColorStop(0, "rgba(59,130,246,0.95)");
     gradient.addColorStop(0.5, "rgba(59,130,246,0.4)");
     gradient.addColorStop(1, "rgba(59,130,246,0)");
     ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
     ctx.fill();
   }
 }
@@ -60,6 +116,7 @@ function drawNeural(ctx: CanvasRenderingContext2D, nodes: Node[], t: number, w: 
 export function AnimatedKlineBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const nodesRef = useRef<Node[] | null>(null);
+  const ripplesRef = useRef<Ripple[]>([]);
 
   useEffect(() => {
     function resize() {
@@ -70,8 +127,8 @@ export function AnimatedKlineBackground() {
       if (!ctx) return;
 
       const rect = canvasEl.parentElement?.getBoundingClientRect();
-      const width = rect?.width ?? window.innerWidth;
-      const height = rect?.height ?? 420;
+      const width = rect && rect.width > 0 ? rect.width : window.innerWidth;
+      const height = rect && rect.height > 0 ? rect.height : window.innerHeight;
       const dpr = window.devicePixelRatio || 1;
       canvasEl.width = width * dpr;
       canvasEl.height = height * dpr;
@@ -82,9 +139,13 @@ export function AnimatedKlineBackground() {
       const nodes: Node[] = [];
       const count = 40;
       for (let i = 0; i < count; i++) {
+        const x = width * (0.08 + Math.random() * 0.84);
+        const y = height * (0.05 + Math.random() * 0.9);
         nodes.push({
-          x: width * (0.08 + Math.random() * 0.84),
-          y: height * (0.05 + Math.random() * 0.9),
+          x,
+          y,
+          targetX: x,
+          targetY: y,
           radius: 10 + Math.random() * 10,
           phase: Math.random() * Math.PI * 2
         });
@@ -94,6 +155,7 @@ export function AnimatedKlineBackground() {
 
     let frameId: number;
     let start = performance.now();
+    let lastNow = start;
 
     const canvasElInitial = canvasRef.current;
     if (!canvasElInitial || typeof window === "undefined") return;
@@ -103,8 +165,66 @@ export function AnimatedKlineBackground() {
     resize();
     window.addEventListener("resize", resize);
 
+    const isInteractiveTarget = (target: EventTarget | null) => {
+      if (!(target instanceof Element)) return false;
+      return !!target.closest("a,button,input,textarea,select,[role='button']");
+    };
+
+    const handlePointerDown = (ev: PointerEvent) => {
+      if (ev.button !== 0) return;
+      if (isInteractiveTarget(ev.target)) return;
+
+      const canvasEl = canvasRef.current;
+      const nodes = nodesRef.current;
+      if (!canvasEl || !nodes || nodes.length === 0) return;
+
+      const rect = canvasEl.getBoundingClientRect();
+      const x = ev.clientX - rect.left;
+      const y = ev.clientY - rect.top;
+      if (x < 0 || y < 0 || x > rect.width || y > rect.height) return;
+
+      const t = (performance.now() - start) / 1000;
+      let nearestIdx = 0;
+      let nearestDist2 = Number.POSITIVE_INFINITY;
+      for (let i = 0; i < nodes.length; i++) {
+        const p = nodeDrift(nodes[i], t);
+        const dx = p.x - x;
+        const dy = p.y - y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < nearestDist2) {
+          nearestDist2 = d2;
+          nearestIdx = i;
+        }
+      }
+
+      const margin = 18;
+      const targetX = Math.max(margin, Math.min(x, rect.width - margin));
+      const targetY = Math.max(margin, Math.min(y, rect.height - margin));
+      nodes[nearestIdx].targetX = targetX;
+      nodes[nearestIdx].targetY = targetY;
+
+      const nowMs = performance.now();
+      const maxRadius = 48;
+      const durationMs = 2100;
+      const waveCount = 3;
+      const waveGapMs = 260;
+      for (let i = 0; i < waveCount; i++) {
+        ripplesRef.current.push({
+          x,
+          y,
+          startMs: nowMs + i * waveGapMs,
+          durationMs,
+          maxRadius
+        });
+      }
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown, { passive: true });
+
     const render = (now: number) => {
       const t = (now - start) / 1000;
+      const dt = Math.min(0.05, (now - lastNow) / 1000);
+      lastNow = now;
       const canvasEl = canvasRef.current;
       if (!canvasEl) {
         frameId = requestAnimationFrame(render);
@@ -122,12 +242,16 @@ export function AnimatedKlineBackground() {
 
       const nodes = nodesRef.current;
       if (nodes) {
-        nodes.forEach((n, idx) => {
-          n.x += Math.sin(t * 0.2 + idx) * 0.08;
-          n.y += Math.cos(t * 0.18 + idx * 1.3) * 0.08;
-        });
+        const tauSeconds = 1.1;
+        const follow = 1 - Math.exp(-dt / tauSeconds);
+        for (const n of nodes) {
+          n.x += (n.targetX - n.x) * follow;
+          n.y += (n.targetY - n.y) * follow;
+        }
         drawNeural(ctx, nodes, t, w, h);
       }
+
+      drawRipples(ctx, ripplesRef.current, now);
 
       frameId = requestAnimationFrame(render);
     };
@@ -137,6 +261,7 @@ export function AnimatedKlineBackground() {
     return () => {
       cancelAnimationFrame(frameId);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("pointerdown", handlePointerDown);
     };
   }, []);
 

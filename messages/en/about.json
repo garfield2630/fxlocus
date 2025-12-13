@@ -1,0 +1,14 @@
+{
+  "title": "About",
+  "lead": "I care more about repeatable process than persuasive stories.",
+  "sections": {
+    "stanceTitle": "Stance",
+    "stanceBody": "I’m against indicator worship and signal dependency. Your ceiling is defined by perception, disciplined execution, and a review loop.",
+    "methodTitle": "Method",
+    "methodBody": "Mind, Market, and Price Action—built into a training path with deliverables and audit criteria."
+  },
+  "cta": {
+    "toFramework": "Explore the framework",
+    "bookCall": "Book a call"
+  }
+}

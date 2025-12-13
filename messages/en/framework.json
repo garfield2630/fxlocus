@@ -1,0 +1,65 @@
+{
+  "title": "Framework",
+  "lead": "Three pillars, a weekly training loop, and audit-ready outputs. Build an operating system for repeatable execution.",
+  "sections": {
+    "mindTitle": "Mind modules",
+    "marketTitle": "Market modules",
+    "priceTitle": "Price Action modules",
+    "loopTitle": "Weekly training loop",
+    "auditTitle": "Audit & evaluation"
+  },
+  "cta": {
+    "toPrograms": "See programs",
+    "bookCall": "Book a call"
+  },
+  "loop": {
+    "lead": "A fixed cadence turns ideas into outputs: input → break down → execute → review → iterate.",
+    "steps": {
+      "s1": {
+        "k": "Input",
+        "v": "Collect context: regime, narrative, locations, risk environment."
+      },
+      "s2": {
+        "k": "Break down",
+        "v": "Write a clean claim: force, location, and falsification."
+      },
+      "s3": {
+        "k": "Execute",
+        "v": "Run the gate, size by risk, and log decisions."
+      },
+      "s4": {
+        "k": "Review",
+        "v": "Audit behavior: violations, exits, and evidence quality."
+      },
+      "s5": {
+        "k": "Iterate",
+        "v": "Change one variable and re-run the loop next week."
+      }
+    }
+  },
+  "audit": {
+    "lead": "A scorecard makes the process reviewable: consistency, risk, review quality, and stable perception.",
+    "items": {
+      "a1": {
+        "k": "A1",
+        "title": "Consistency",
+        "desc": "Do gates, risk, and exits look the same across trades?"
+      },
+      "a2": {
+        "k": "A2",
+        "title": "Risk control",
+        "desc": "Is risk per trade consistent—and reduced when the environment changes?"
+      },
+      "a3": {
+        "k": "A3",
+        "title": "Review quality",
+        "desc": "Do you produce written reviews with corrective actions?"
+      },
+      "a4": {
+        "k": "A4",
+        "title": "Perception stability",
+        "desc": "Can you explain different markets with one framework under stress?"
+      }
+    }
+  }
+}

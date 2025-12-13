@@ -1,66 +1,37 @@
-﻿<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
   <defs>
-    <radialGradient id="orb" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
-      gradientTransform="translate(128 128) rotate(90) scale(110)">
-      <stop offset="0" stop-color="#E0F2FE" />
-      <stop offset="0.45" stop-color="#38BDF8" />
-      <stop offset="1" stop-color="#0F172A" />
-    </radialGradient>
-    <linearGradient id="candleUp" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#BBF7D0" />
-      <stop offset="1" stop-color="#22C55E" />
+    <linearGradient id="fxg" x1="10" y1="10" x2="54" y2="54" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EAF6FF"/>
+      <stop offset="0.55" stop-color="#08102C"/>
+      <stop offset="1" stop-color="#02010A"/>
     </linearGradient>
-    <linearGradient id="candleDown" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#FCA5A5" />
-      <stop offset="1" stop-color="#EF4444" />
-    </linearGradient>
+
+    <!-- 轻霓光：尽量克制，避免“廉价发光” -->
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="1.15" result="b"/>
+      <feColorMatrix in="b" type="matrix"
+        values="0 0 0 0 0.12
+                0 0 0 0 0.55
+                0 0 0 0 0.95
+                0 0 0 0.55 0" result="c"/>
+      <feMerge>
+        <feMergeNode in="c"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
 
-  <rect width="256" height="256" fill="transparent" />
+  <g filter="url(#glow)" stroke="url(#fxg)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- “透镜弧”点到为止 -->
+    <path d="M15 43.5 A22 22 0 1 1 50 20.5"/>
 
-  <circle cx="128" cy="126" r="96" fill="url(#orb)" />
-  <circle cx="128" cy="126" r="96" stroke="#7DD3FC" stroke-width="3" stroke-opacity="0.9" />
+    <!-- F（高） -->
+    <path d="M21 18 V46"/>
+    <path d="M21 18 H34"/>
+    <path d="M21 30 H31"/>
 
-  <!-- 自由分布的神经元网络：节点 + 连线 -->
-  <path d="M84 98L114 80L142 88L172 74" stroke="#E5E7EB" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M90 132L120 118L146 132L168 120" stroke="#C4D3FF" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M96 150L120 156L144 148L170 160" stroke="#A5B4FC" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
-
-  <circle cx="84" cy="98" r="4" fill="#F9FAFB" />
-  <circle cx="114" cy="80" r="4" fill="#F9FAFB" />
-  <circle cx="142" cy="88" r="4" fill="#F9FAFB" />
-  <circle cx="172" cy="74" r="4" fill="#F9FAFB" />
-
-  <circle cx="90" cy="132" r="4" fill="#F9FAFB" />
-  <circle cx="120" cy="118" r="4" fill="#F9FAFB" />
-  <circle cx="146" cy="132" r="4" fill="#F9FAFB" />
-  <circle cx="168" cy="120" r="4" fill="#F9FAFB" />
-
-  <circle cx="96" cy="150" r="3.8" fill="#F9FAFB" />
-  <circle cx="120" cy="156" r="3.8" fill="#F9FAFB" />
-  <circle cx="144" cy="148" r="3.8" fill="#F9FAFB" />
-  <circle cx="170" cy="160" r="3.8" fill="#F9FAFB" />
-
-  <!-- K 线轨迹 -->
-  <g transform="translate(96 142)">
-    <line x1="8" y1="4" x2="8" y2="40" stroke="#E5E7EB" stroke-width="1.6" stroke-linecap="round" />
-    <rect x="3.8" y="18" width="8.4" height="16" rx="2.4" fill="url(#candleDown)" />
-
-    <line x1="32" y1="0" x2="32" y2="44" stroke="#E5E7EB" stroke-width="1.6" stroke-linecap="round" />
-    <rect x="27.8" y="8" width="8.4" height="24" rx="2.4" fill="url(#candleUp)" />
-
-    <line x1="56" y1="6" x2="56" y2="40" stroke="#E5E7EB" stroke-width="1.6" stroke-linecap="round" />
-    <rect x="51.8" y="20" width="8.4" height="16" rx="2.4" fill="url(#candleUp)" />
-
-    <line x1="80" y1="4" x2="80" y2="40" stroke="#E5E7EB" stroke-width="1.6" stroke-linecap="round" />
-    <rect x="75.8" y="24" width="8.4" height="12" rx="2.4" fill="url(#candleDown)" />
+    <!-- L（更小：更矮 + 底横更短） -->
+    <path d="M39 26 V46"/>
+    <path d="M39 46 H47"/>
   </g>
-
-  <line x1="92" y1="196" x2="164" y2="196" stroke="#E5E7EB" stroke-width="1.8" stroke-linecap="round" stroke-opacity="0.9" />
-
-  <text x="128" y="220" text-anchor="middle" fill="#F9FAFB"
-    font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-    font-size="18" letter-spacing="4" font-weight="800">
-    FxLocus
-  </text>
 </svg>

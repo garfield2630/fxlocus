@@ -1,0 +1,62 @@
+{
+  "title": "Contact",
+  "lead": "To make this efficient, describe your stage, goal, and the biggest bottleneck you’re facing.",
+  "entry": {
+    "call": {
+      "title": "Book a call",
+      "desc": "Discuss a path and program fit."
+    },
+    "biz": {
+      "title": "Collaboration",
+      "desc": "Content, tools, or brand collaboration."
+    },
+    "apply": {
+      "title": "Apply",
+      "desc": "If you want cohort training or 1:1 audit."
+    }
+  },
+  "form": {
+    "name": "Name",
+    "email": "Email",
+    "wechat": "WeChat (optional)",
+    "intent": "Intent",
+    "instruments": "Instruments (multi-select)",
+    "bottleneck": "Biggest bottleneck",
+    "message": "Your context and request",
+    "placeholders": {
+      "name": "How should I address you?",
+      "email": "Your email address",
+      "wechat": "Optional WeChat ID",
+      "message": "e.g., EURUSD/XAUUSD/US500/BTC. Biggest bottleneck: discipline/perception/structure/risk/review…"
+    },
+    "intentOptions": {
+      "call": "Book a call",
+      "biz": "Collaboration",
+      "apply": "Apply"
+    },
+    "instrumentOptions": {
+      "fx": "FX",
+      "gold": "Gold",
+      "indices": "Indices",
+      "crypto": "Crypto"
+    },
+    "bottleneckOptions": {
+      "discipline": "Discipline",
+      "perception": "Perception",
+      "structure": "Structure",
+      "risk": "Risk",
+      "review": "Review"
+    },
+    "success": "Submitted. I’ll get back to you soon.",
+    "error": "Submission failed. Please try again."
+  },
+  "expect": {
+    "title": "What to expect",
+    "ctaLead": "To match a path faster, review the Framework first and share your constraints clearly.",
+    "items": {
+      "i1": "Reply time: typically within 24–48 hours on weekdays.",
+      "i2": "We respond by email first; WeChat is used when needed.",
+      "i3": "No performance promises. The focus is process and risk constraints."
+    }
+  }
+}

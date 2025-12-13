@@ -1,0 +1,23 @@
+{
+  "title": "System",
+  "lead": "Discipline is a record. Log, review, and audit your process.",
+  "features": {
+    "log": "Trade log",
+    "review": "Review templates",
+    "score": "Discipline score",
+    "notes": "Perception notes"
+  },
+  "featureDesc": {
+    "log": "Log entries, exits, rationale, and risk.",
+    "review": "Use weekly review templates and error taxonomy.",
+    "score": "Score consistency, risk, and rule adherence.",
+    "notes": "Keep structured notes for perception and narrative."
+  },
+  "auth": {
+    "title": "Access",
+    "lead": "Sign in to use the system. If the environment isn’t configured, the page runs in demo mode.",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "hint": "If environment variables are not configured, the page runs in demo mode."
+  }
+}
