@@ -24,7 +24,7 @@ export function Hero() {
   const tHome = useTranslations("home");
   const tCommon = useTranslations("common");
   const reduceMotion = useReducedMotion();
-  const preset = animationPreset(reduceMotion);
+const preset = animationPreset(!!reduceMotion);
 
   const handleScrollToExplore = useCallback(() => {
     const target = document.getElementById("home-content");
