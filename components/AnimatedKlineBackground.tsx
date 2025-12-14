@@ -59,9 +59,12 @@ function drawRipples(ctx: CanvasRenderingContext2D, ripples: Ripple[], nowMs: nu
     const p = ageMs / r.durationMs;
     if (p >= 1) continue;
 
-    const radius = easeOutCubic(p) * r.maxRadius;
-    const alpha = Math.sin(Math.PI * p) * 0.28;
-    ctx.lineWidth = 1.25 - p * 0.25;
+const minRadius = 6;
+const radius = minRadius + easeOutCubic(p) * (r.maxRadius - minRadius);
+
+// 立刻可见且逐渐衰减：p=0 alpha最大，p->1 alpha->0
+const alpha = (1 - p) * 0.22;
+    ctx.lineWidth = 1.6 - p * 0.9;
     ctx.strokeStyle = `rgba(59,130,246,${alpha.toFixed(3)})`;
     ctx.beginPath();
     ctx.arc(r.x, r.y, radius, 0, Math.PI * 2);
@@ -204,19 +207,20 @@ export function AnimatedKlineBackground() {
       nodes[nearestIdx].targetY = targetY;
 
       const nowMs = performance.now();
-      const maxRadius = 48;
-      const durationMs = 2100;
-      const waveCount = 3;
-      const waveGapMs = 260;
-      for (let i = 0; i < waveCount; i++) {
-        ripplesRef.current.push({
-          x,
-          y,
-          startMs: nowMs + i * waveGapMs,
-          durationMs,
-          maxRadius
-        });
-      }
+// 第二次点击：直接清空上一次涟漪（保证“点第二个地方时第一个已经没了”）
+ripplesRef.current.length = 0;
+
+const maxRadius = 72;     // 稍大一点更有冲击，但不拖沓
+const durationMs = 900;   // 关键：更快消失（你可以在 700~1200 之间微调）
+
+ripplesRef.current.push({
+  x,
+  y,
+  startMs: nowMs,         // 立刻开始
+  durationMs,
+  maxRadius
+});
+
     };
 
     window.addEventListener("pointerdown", handlePointerDown, { passive: true });
