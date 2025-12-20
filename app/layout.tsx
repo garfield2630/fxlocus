@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Inter, Noto_Sans_SC } from "next/font/google";
+import { defaultLocale } from "@/i18n/routing";
 import "./globals.css";
 
 const inter = Inter({
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const locale = headers().get("x-next-intl-locale") ?? "zh";
+  const locale = headers().get("x-next-intl-locale") ?? defaultLocale;
   const isEn = locale === "en";
 
   return (
