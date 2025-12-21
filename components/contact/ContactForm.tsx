@@ -154,7 +154,7 @@ export function ContactForm() {
           <select
             value={state.intent}
             onChange={(e) => setState((p) => ({ ...p, intent: e.target.value }))}
-            className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-50"
+            className="fx-select mt-2"
           >
             {intentOptions.map((opt) => (
               <option key={opt.key} value={opt.key}>
@@ -197,7 +197,7 @@ export function ContactForm() {
           <select
             value={state.bottleneck}
             onChange={(e) => setState((p) => ({ ...p, bottleneck: e.target.value }))}
-            className="mt-4 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-50"
+            className="fx-select mt-4"
           >
             {bottleneckOptions.map((opt) => (
               <option key={opt.key} value={opt.key}>

@@ -1,0 +1,11 @@
+{
+  "title": "Videos",
+  "lead": "Short, structured explanations that support the training path—paired with clear tasks.",
+  "detail": {
+    "keyPoints": "Key points",
+    "homework": "Training task",
+    "homeworkFallback": "Apply the template from the related Insight and write a short reviewable note.",
+    "related": "Related insights"
+  }
+}
+

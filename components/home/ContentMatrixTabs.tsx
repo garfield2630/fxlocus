@@ -4,31 +4,31 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
-import type { Pillar } from "@/lib/mock/types";
+import type { Pillar } from "@/lib/domain/types";
 
 type ArticlePreview = {
   slug: string;
   pillar: Pillar;
   title: string;
   excerpt: string;
-  readingTime: number;
+  readingMinutes: number;
   publishedAt: string;
 };
 
 type VideoPreview = {
-  id: string;
+  slug: string;
   pillar: Pillar;
   title: string;
   excerpt: string;
-  durationMinutes: number;
+  durationMin: number;
   publishedAt: string;
 };
 
 type CoursePreview = {
-  id: string;
+  slug: string;
+  pillar: Pillar;
   title: string;
-  lead: string;
-  tier: "course" | "camp" | "audit";
+  excerpt: string;
 };
 
 type Props = {
@@ -95,7 +95,7 @@ export function ContentMatrixTabs({ articles, videos, courses }: Props) {
                 <div className="flex items-center justify-between gap-3">
                   <span className="fx-pill">{tLabels(pillLabelKey(post.pillar))}</span>
                   <span className="text-xs text-slate-200/60">
-                    {post.publishedAt} · {post.readingTime}
+                    {post.publishedAt} · {post.readingMinutes}
                     {tCommon("ui.minutesShort")}
                   </span>
                 </div>
@@ -116,21 +116,21 @@ export function ContentMatrixTabs({ articles, videos, courses }: Props) {
         <div className="mt-6 space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
             {videos.map((video) => (
-              <div key={video.id} className="fx-card p-6">
+              <Link key={video.slug} href={`/videos/${video.slug}`} className="fx-card p-6">
                 <div className="flex items-center justify-between gap-3">
                   <span className="fx-pill">{tLabels(pillLabelKey(video.pillar))}</span>
                   <span className="text-xs text-slate-200/60">
-                    {video.durationMinutes}
+                    {video.durationMin}
                     {tCommon("ui.minutesShort")} · {video.publishedAt}
                   </span>
                 </div>
                 <h3 className="mt-4 text-base font-semibold text-slate-50">{video.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-200/70">{video.excerpt}</p>
-              </div>
+              </Link>
             ))}
           </div>
           <div>
-            <Link href="/insights" className="fx-btn fx-btn-secondary">
+            <Link href="/videos" className="fx-btn fx-btn-secondary">
               {t("ctaAllVideos")}
             </Link>
           </div>
@@ -141,17 +141,17 @@ export function ContentMatrixTabs({ articles, videos, courses }: Props) {
         <div className="mt-6 space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
             {courses.map((course) => (
-              <div key={course.id} className="fx-card p-6">
+              <Link key={course.slug} href={`/courses/${course.slug}`} className="fx-card p-6">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="fx-pill">{tCommon(`tiers.${course.tier}` as any)}</span>
+                  <span className="fx-pill">{tLabels(pillLabelKey(course.pillar))}</span>
                 </div>
                 <h3 className="mt-4 text-base font-semibold text-slate-50">{course.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-200/70">{course.lead}</p>
-              </div>
+                <p className="mt-2 text-sm leading-6 text-slate-200/70">{course.excerpt}</p>
+              </Link>
             ))}
           </div>
           <div>
-            <Link href="/programs" className="fx-btn fx-btn-secondary">
+            <Link href="/courses" className="fx-btn fx-btn-secondary">
               {t("ctaAllCourses")}
             </Link>
           </div>

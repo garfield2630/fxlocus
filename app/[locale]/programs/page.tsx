@@ -33,10 +33,10 @@ export default async function ProgramsPage({ params }: Props) {
         </h1>
         <p className="fx-lead">{t("lead")}</p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Link href="/contact" className="fx-btn fx-btn-primary">
+          <Link href="/contact" locale={locale} className="fx-btn fx-btn-primary">
             {tCommon("cta.bookCall")}
           </Link>
-          <Link href="/framework" className="fx-btn fx-btn-secondary">
+          <Link href="/framework" locale={locale} className="fx-btn fx-btn-secondary">
             {tCommon("cta.enterFramework")}
           </Link>
         </div>
@@ -82,7 +82,7 @@ export default async function ProgramsPage({ params }: Props) {
                 </div>
 
                 <div className="mt-8">
-                  <Link href="/contact" className="fx-btn fx-btn-secondary">
+                  <Link href="/contact" locale={locale} className="fx-btn fx-btn-secondary">
                     {t(`tiers.${tier}.cta`)}
                   </Link>
                 </div>
@@ -127,7 +127,7 @@ export default async function ProgramsPage({ params }: Props) {
         </div>
 
         <div className="mt-8">
-          <Link href="/contact" className="fx-btn fx-btn-primary">
+          <Link href="/contact" locale={locale} className="fx-btn fx-btn-primary">
             {tCommon("cta.bookCall")}
           </Link>
         </div>

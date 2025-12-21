@@ -1,5 +1,9 @@
 {
-  "tagline": "Trade is a process you can train.",
+  "brand": {
+    "primary": "FxLocus Trading",
+    "secondary": "汇点核心交易",
+    "subtitle": "Mind · Market · Price Action"
+  },
   "links": {
     "privacy": "Privacy",
     "terms": "Terms & Risk"

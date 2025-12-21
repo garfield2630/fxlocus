@@ -31,10 +31,10 @@ export default async function ToolsPage({ params }: Props) {
         </h1>
         <p className="fx-lead">{t("lead")}</p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Link href="/framework" className="fx-btn fx-btn-secondary">
+          <Link href="/framework" locale={locale} className="fx-btn fx-btn-secondary">
             {tCommon("cta.enterFramework")}
           </Link>
-          <Link href="/contact" className="fx-btn fx-btn-secondary">
+          <Link href="/contact" locale={locale} className="fx-btn fx-btn-secondary">
             {tCommon("cta.bookCall")}
           </Link>
         </div>

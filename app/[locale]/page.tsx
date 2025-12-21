@@ -3,17 +3,16 @@ import { getTranslations } from "next-intl/server";
 
 import { ContentMatrixTabs } from "@/components/home/ContentMatrixTabs";
 import { Hero } from "@/components/home/Hero";
+import { VideoPlayer } from "@/components/media/VideoPlayer";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import { Link } from "@/i18n/navigation";
-import { courses } from "@/lib/mock/courses";
+import type { Locale } from "@/i18n/routing";
+import { getDataProvider } from "@/lib/data";
 import { homeArtifacts, homeMarketsCoverage, homeTrainingPath, pickLocale } from "@/lib/mock/home";
-import { posts } from "@/lib/mock/posts";
 import { testimonials } from "@/lib/mock/testimonials";
-import type { Locale } from "@/lib/mock/types";
-import { videos } from "@/lib/mock/videos";
 
 type Props = {
   params: { locale: Locale };
@@ -38,29 +37,36 @@ export default async function HomePage({ params }: Props) {
   const tCommon = await getTranslations({ locale, namespace: "common" });
   const tRisk = await getTranslations({ locale, namespace: "risk" });
 
-  const articlePreviews = posts.slice(0, 4).map((post) => ({
+  const provider = getDataProvider();
+  const [insights, videos, courses] = await Promise.all([
+    provider.listInsights(locale),
+    provider.listVideos(locale),
+    provider.listCourses(locale)
+  ]);
+
+  const articlePreviews = insights.slice(0, 4).map((post) => ({
     slug: post.slug,
     pillar: post.pillar,
-    title: pick(locale, post.title),
-    excerpt: pick(locale, post.excerpt),
-    readingTime: post.readingTime,
-    publishedAt: post.publishedAt
+    title: post.title,
+    excerpt: post.excerpt,
+    readingMinutes: post.readingMinutes ?? 0,
+    publishedAt: post.publishedAt ?? ""
   }));
 
   const videoPreviews = videos.slice(0, 3).map((video) => ({
-    id: video.id,
+    slug: video.slug,
     pillar: video.pillar,
-    title: pick(locale, video.title),
-    excerpt: pick(locale, video.excerpt),
-    durationMinutes: video.durationMinutes,
-    publishedAt: video.publishedAt
+    title: video.title,
+    excerpt: video.excerpt,
+    durationMin: video.durationMin ?? 0,
+    publishedAt: video.publishedAt ?? ""
   }));
 
   const coursePreviews = courses.slice(0, 3).map((course) => ({
-    id: course.id,
-    tier: course.tier,
-    title: pick(locale, course.title),
-    lead: pick(locale, course.lead)
+    slug: course.slug,
+    pillar: course.pillar,
+    title: course.title,
+    excerpt: course.excerpt
   }));
 
   const pathSteps = ["s1", "s2", "s3", "s4", "s5"] as const;
@@ -72,6 +78,24 @@ export default async function HomePage({ params }: Props) {
 
       <Section
         id="home-content"
+        className="scroll-mt-24"
+        eyebrow={tHome("about.eyebrow")}
+        title={tHome("about.title")}
+        lead={tHome("about.lead")}
+      >
+        <div className="mt-10 grid gap-8 lg:grid-cols-2 lg:items-start">
+          <div className="space-y-4 text-sm leading-7 text-slate-200/75 md:text-base">
+            <p>{tHome("about.body.p1")}</p>
+            <p>{tHome("about.body.p2")}</p>
+            <p>{tHome("about.body.p3")}</p>
+          </div>
+
+          <VideoPlayer src="/test/test.mp4" />
+        </div>
+      </Section>
+
+      <Section
+        id="home-path"
         className="scroll-mt-24"
         eyebrow={tHome("realPath.eyebrow")}
         title={tHome("realPath.title")}
@@ -254,7 +278,11 @@ export default async function HomePage({ params }: Props) {
                 ))}
               </ul>
               <div className="mt-6">
-                <Link href={`/framework#${pillar.key}`} className="text-sm font-semibold text-sky-400">
+                <Link
+                  href={`/framework#${pillar.key}`}
+                  locale={locale}
+                  className="text-sm font-semibold text-sky-400"
+                >
                   {tHome("pillars.cta")}
                 </Link>
               </div>
@@ -307,7 +335,7 @@ export default async function HomePage({ params }: Props) {
         </div>
 
         <div className="mt-8">
-          <ButtonLink href="/programs" variant="secondary">
+          <ButtonLink href="/programs" locale={locale} variant="secondary">
             {tHome("path.cta")}
           </ButtonLink>
         </div>
@@ -342,7 +370,7 @@ export default async function HomePage({ params }: Props) {
         </div>
 
         <div className="mt-8">
-          <ButtonLink href="/tools" variant="secondary">
+          <ButtonLink href="/tools" locale={locale} variant="secondary">
             {tHome("tools.cta")}
           </ButtonLink>
         </div>
@@ -381,7 +409,7 @@ export default async function HomePage({ params }: Props) {
         </div>
 
         <div className="mt-8">
-          <ButtonLink href="/insights" variant="secondary">
+          <ButtonLink href="/insights" locale={locale} variant="secondary">
             {tHome("proof.cta")}
           </ButtonLink>
         </div>
@@ -400,7 +428,7 @@ export default async function HomePage({ params }: Props) {
               </summary>
               <div className="mt-4 space-y-4 text-sm leading-6 text-slate-200/75">
                 <p>{tHome(`faq.items.${key}.a`)}</p>
-                <Link href="/framework" className="inline-flex text-sm font-semibold text-sky-400">
+                <Link href="/framework" locale={locale} className="inline-flex text-sm font-semibold text-sky-400">
                   {tCommon("cta.enterFramework")}
                 </Link>
               </div>
@@ -419,10 +447,10 @@ export default async function HomePage({ params }: Props) {
             {tHome("finalCta.lead")}
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <ButtonLink href="/framework" variant="primary">
+            <ButtonLink href="/framework" locale={locale} variant="primary">
               {tHome("finalCta.primary")}
             </ButtonLink>
-            <ButtonLink href="/contact" variant="secondary">
+            <ButtonLink href="/contact" locale={locale} variant="secondary">
               {tHome("finalCta.secondary")}
             </ButtonLink>
           </div>

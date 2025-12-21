@@ -1,0 +1,110 @@
+{
+  "eyebrow": "捐赠 / 会员",
+  "title": "立刻捐赠，成为会员！",
+  "lead": "90天试用会员以捐赠形式开放，不承诺收益，不构成任何投资建议。重点在训练机制与社区陪练。",
+  "pricing": {
+    "amountLabel": "当前捐赠金额",
+    "countdownLabel": "倒计时",
+    "dailyIncrease": "每天增加 $5"
+  },
+  "rules": {
+    "title": "捐赠规则与说明",
+    "items": [
+      "自2025年3月10日起全球范围接受捐赠成为90天试用会员。金额$999(仅接受USDT/USDC)起。",
+      "捐赠将默认私人白行为且无任何承诺和商业约束力但可参与会员社区的顶尖交易员集训+21天教练陪跑。",
+      "成绩优异可自愿参与挑战，挑战成功：1.终身进阶受训 2.1-20万$MOM操作权 3.顶尖矩阵俱乐部。",
+      "中国大陆会员接受数字人民币捐赠，详情请联系团队长。"
+    ],
+    "walletLabel": "国际钱包",
+    "walletValue": "das67das7d80qwe0fhjkqlew-wqeq"
+  },
+  "cta": {
+    "openForm": "立即报名",
+    "export": "导出 JSON"
+  },
+  "form": {
+    "title": "报名信息",
+    "subtitle": "请尽量具体描述你的阶段与卡点，便于评估与匹配训练路径。",
+    "sections": {
+      "personal": "个人信息",
+      "status": "个人现状",
+      "intent": "意愿与目标",
+      "thoughts": "行业认知与想法（富文本）"
+    },
+    "fields": {
+      "name": { "label": "姓名", "placeholder": "怎么称呼你？" },
+      "email": { "label": "邮箱", "placeholder": "你常用的邮箱地址" },
+      "telegram": { "label": "Telegram/WhatsApp（选填）", "placeholder": "账号或号码" },
+      "wechat": { "label": "微信（选填）", "placeholder": "可选微信号" },
+      "country": { "label": "国家/地区", "placeholder": "你所在的国家或地区" },
+      "years": { "label": "交易年限", "placeholder": "请选择…" },
+      "weekly": { "label": "每周交易频率", "placeholder": "例如：每周 5–15 笔 / 每周 2–3 个交易时段" },
+      "instruments": { "label": "主要交易市场（多选）" },
+      "bottlenecks": { "label": "当前主要问题（多选）" },
+      "why": { "label": "为什么想加入（必填）", "placeholder": "你的动机与现状" },
+      "goal": { "label": "90天期望达成什么（必填）", "placeholder": "请写出具体结果与标准" },
+      "challenge": { "label": "是否愿意参加挑战" },
+      "thoughts": { "label": "行业认知与想法（必填）", "placeholder": "请写下你对行业的认知、你正在经历的问题、你希望获得的改变…（越具体越好）" }
+    },
+    "richText": {
+      "toolbar": {
+        "undo": "撤销",
+        "redo": "重做",
+        "bold": "加粗",
+        "italic": "斜体",
+        "underline": "下划线",
+        "heading": "标题",
+        "bulletList": "无序列表",
+        "orderedList": "有序列表",
+        "blockquote": "引用",
+        "link": "链接",
+        "unlink": "移除链接",
+        "image": "插入图片"
+      },
+      "link": {
+        "placeholder": "粘贴链接…",
+        "apply": "应用",
+        "remove": "移除",
+        "cancel": "取消"
+      },
+      "image": {
+        "unsupported": "只支持图片文件。",
+        "tooLarge": "图片过大（最大 {max}MB）。",
+        "readFailed": "读取图片失败，请重试。"
+      }
+    },
+    "options": {
+      "years": { "lt1": "<1年", "1_3": "1-3年", "3_5": "3-5年", "5_10": "5-10年", "10p": "10年以上" },
+      "instruments": {
+        "fx": "外汇",
+        "gold": "黄金",
+        "crypto": "加密",
+        "index": "指数",
+        "stocks": "股票",
+        "other": "其他"
+      },
+      "bottlenecks": {
+        "impulse": "冲动",
+        "fomo": "FOMO",
+        "overtrading": "过度交易",
+        "noDiscipline": "无纪律",
+        "structure": "看不懂结构",
+        "review": "不会复盘",
+        "other": "其他"
+      },
+      "challenge": { "yes": "愿意", "no": "暂不" }
+    },
+    "actions": { "submit": "提交", "cancel": "取消", "close": "关闭" },
+    "success": {
+      "title": "已提交",
+      "body": "申请编号：{id}",
+      "time": "提交时间：{time}"
+    }
+  },
+  "validation": {
+    "required": "必填",
+    "invalidEmail": "邮箱格式不正确。",
+    "rateLimited": "你刚刚提交过，请稍后再试。",
+    "botDetected": "提交被拒绝。"
+  }
+}

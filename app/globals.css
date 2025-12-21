@@ -2,6 +2,8 @@
 
 :root {
   color-scheme: dark;
+  --font-inter: "Inter";
+  --font-noto: "Noto Sans SC";
   --font-sans: var(--font-noto);
 
   --bg: #02010a;
@@ -85,6 +87,16 @@ body {
 
   .fx-pill {
     @apply inline-flex items-center rounded-full border border-[color:var(--border)] bg-[color:var(--panel)] px-3 py-1 text-xs font-medium text-[color:var(--muted)];
+  }
+
+  .fx-select {
+    @apply w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40;
+  }
+
+  .fx-select option,
+  .fx-select optgroup {
+    background-color: rgb(2 6 23); /* slate-950 */
+    color: rgb(248 250 252); /* slate-50 */
   }
 
   .fx-surface {

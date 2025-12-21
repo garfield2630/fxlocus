@@ -76,7 +76,7 @@ export default async function ContactPage({ params }: Props) {
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-200/75">{t("expect.ctaLead")}</p>
               <div className="mt-5">
-                <Link href="/framework" className="fx-btn fx-btn-secondary">
+                <Link href="/framework" locale={locale} className="fx-btn fx-btn-secondary">
                   {tCommon("cta.enterFramework")}
                 </Link>
               </div>
@@ -89,4 +89,3 @@ export default async function ContactPage({ params }: Props) {
     </div>
   );
 }
-

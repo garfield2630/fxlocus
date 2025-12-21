@@ -2,10 +2,11 @@
 
 import { useCallback } from "react";
 import Image from "next/image";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { ButtonLink } from "@/components/ui/Button";
+import type { Locale } from "@/i18n/routing";
 
 function animationPreset(reduceMotion: boolean) {
   if (reduceMotion) {
@@ -23,6 +24,7 @@ function animationPreset(reduceMotion: boolean) {
 export function Hero() {
   const tHome = useTranslations("home");
   const tCommon = useTranslations("common");
+  const locale = useLocale() as Locale;
   const reduceMotion = useReducedMotion();
 const preset = animationPreset(!!reduceMotion);
 
@@ -75,6 +77,7 @@ const preset = animationPreset(!!reduceMotion);
           <div className="pt-2">
             <ButtonLink
               href="/framework"
+              locale={locale}
               variant="primary"
               className="rounded-full px-6 py-3"
             >

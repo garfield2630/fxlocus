@@ -256,7 +256,7 @@ function StudentsPage() {
         <div className="admin-filter-field">
           <span className="admin-filter-label">性别</span>
           <select
-            className="admin-filter-input"
+            className="admin-filter-input fx-select"
             value={genderFilter}
             onChange={(e) => setGenderFilter(e.target.value)}
           >
@@ -323,7 +323,7 @@ function StudentsPage() {
             <div className="admin-filter-field">
               <span className="admin-filter-label">性别</span>
               <select
-                className="admin-filter-input"
+                className="admin-filter-input fx-select"
                 value={formGender}
                 onChange={(e) => setFormGender(e.target.value)}
               >
@@ -581,7 +581,7 @@ function TradersPage() {
             <div className="admin-filter-field">
               <span className="admin-filter-label">选择学员</span>
               <select
-                className="admin-filter-input"
+                className="admin-filter-input fx-select"
                 value={studentId}
                 onChange={(e) => setStudentId(e.target.value)}
               >

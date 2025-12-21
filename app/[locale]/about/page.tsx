@@ -52,10 +52,10 @@ export default async function AboutPage({ params }: Props) {
             {t("lead")}
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/framework" className="fx-btn fx-btn-primary">
+            <Link href="/framework" locale={locale} className="fx-btn fx-btn-primary">
               {t("cta.toFramework")}
             </Link>
-            <Link href="/contact" className="fx-btn fx-btn-secondary">
+            <Link href="/contact" locale={locale} className="fx-btn fx-btn-secondary">
               {t("cta.bookCall")}
             </Link>
           </div>
@@ -64,4 +64,3 @@ export default async function AboutPage({ params }: Props) {
     </div>
   );
 }
-

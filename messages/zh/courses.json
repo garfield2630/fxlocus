@@ -1,0 +1,27 @@
+{
+  "title": "课程",
+  "lead": "结构化训练课程：课节、交付物与本地进度（localStorage）。",
+  "access": {
+    "free": "免费",
+    "member": "会员"
+  },
+  "level": {
+    "all": "全部等级",
+    "beginner": "入门",
+    "intermediate": "进阶",
+    "advanced": "高级"
+  },
+  "lessonsTitle": "课节目录",
+  "lessonsLead": "共 {count} 节",
+  "lessonLabel": "第 {index} 节",
+  "progress": "进度",
+  "completed": "已完成",
+  "notCompleted": "未完成",
+  "markComplete": "标记为完成",
+  "markIncomplete": "取消完成标记",
+  "backToCourse": "返回课程",
+  "navigationTitle": "导航",
+  "prevLesson": "上一节",
+  "nextLesson": "下一节"
+}
+

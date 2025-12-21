@@ -270,6 +270,16 @@
     "primary": "Explore the framework",
     "secondary": "Book a call"
   },
+  "about": {
+    "eyebrow": "About FxLocus",
+    "title": "A training system, not a signal feed",
+    "lead": "Built around Mind, Market, and Price Action—so execution becomes auditable and repeatable.",
+    "body": {
+      "p1": "FxLocus is built for real traders across FX, Gold, Indices, and Crypto.",
+      "p2": "No signals. No performance promises. Just a structured path you can train and review.",
+      "p3": "Use the framework, templates, and tools to turn decisions into a record."
+    }
+  },
   "realPath": {
     "eyebrow": "Training path",
     "title": "Five steps with deliverables and metrics",

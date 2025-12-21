@@ -1,0 +1,27 @@
+{
+  "title": "Courses",
+  "lead": "Structured training programs with lessons, outputs, and simple progress tracking (local).",
+  "access": {
+    "free": "Free",
+    "member": "Member"
+  },
+  "level": {
+    "all": "All levels",
+    "beginner": "Beginner",
+    "intermediate": "Intermediate",
+    "advanced": "Advanced"
+  },
+  "lessonsTitle": "Lessons",
+  "lessonsLead": "{count, plural, =0 {No lessons yet} one {# lesson} other {# lessons}}",
+  "lessonLabel": "Lesson {index}",
+  "progress": "Progress",
+  "completed": "Completed",
+  "notCompleted": "Not completed",
+  "markComplete": "Mark complete",
+  "markIncomplete": "Mark incomplete",
+  "backToCourse": "Back to course",
+  "navigationTitle": "Navigate",
+  "prevLesson": "Previous lesson",
+  "nextLesson": "Next lesson"
+}
+

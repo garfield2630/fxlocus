@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
+import { FooterBrand } from "@/components/layout/FooterBrand";
 
 export function SiteFooter() {
   const tFooter = useTranslations("footer");
@@ -12,9 +13,7 @@ export function SiteFooter() {
     <footer className="border-t border-white/10 py-10">
       <div className="fx-container space-y-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="text-sm font-semibold tracking-[0.12em] text-slate-50">
-            {tFooter("tagline")}
-          </div>
+          <FooterBrand />
           <div className="flex items-center gap-4 text-sm text-slate-200/70">
             <Link href="/privacy" className="hover:text-slate-50">
               {tFooter("links.privacy")}
@@ -30,4 +29,3 @@ export function SiteFooter() {
     </footer>
   );
 }
-

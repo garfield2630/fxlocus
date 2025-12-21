@@ -59,10 +59,10 @@ export default async function SystemPage({ params }: Props) {
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/contact" className="fx-btn fx-btn-primary">
+            <Link href="/contact" locale={locale} className="fx-btn fx-btn-primary">
               {t("auth.signIn")}
             </Link>
-            <Link href="/contact" className="fx-btn fx-btn-secondary">
+            <Link href="/contact" locale={locale} className="fx-btn fx-btn-secondary">
               {t("auth.signUp")}
             </Link>
           </div>

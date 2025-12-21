@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
-import type { Pillar } from "@/lib/mock/types";
+import type { Pillar } from "@/lib/domain/types";
 
 type PostPreview = {
   slug: string;
@@ -79,7 +79,7 @@ export function InsightsExplorer({ posts }: Props) {
             <select
               value={pillar}
               onChange={(e) => setPillar(e.target.value as PillarFilter)}
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-50"
+              className="fx-select mt-2"
             >
               <option value="all">{t("filters.all")}</option>
               <option value="mind">{t("filters.mind")}</option>
@@ -95,7 +95,7 @@ export function InsightsExplorer({ posts }: Props) {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-50"
+              className="fx-select mt-2"
             >
               <option value="latest">{t("sort.latest")}</option>
               <option value="popular">{t("sort.popular")}</option>

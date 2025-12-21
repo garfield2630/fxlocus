@@ -52,10 +52,10 @@ export default async function FrameworkPage({ params }: Props) {
         </h1>
         <p className="fx-lead">{t("lead")}</p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <ButtonLink href="/programs" variant="primary">
+          <ButtonLink href="/programs" locale={locale} variant="primary">
             {t("cta.toPrograms")}
           </ButtonLink>
-          <ButtonLink href="/contact" variant="secondary">
+          <ButtonLink href="/contact" locale={locale} variant="secondary">
             {t("cta.bookCall")}
           </ButtonLink>
         </div>
@@ -155,10 +155,10 @@ export default async function FrameworkPage({ params }: Props) {
         </div>
 
         <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-          <ButtonLink href="/programs" variant="primary">
+          <ButtonLink href="/programs" locale={locale} variant="primary">
             {t("cta.toPrograms")}
           </ButtonLink>
-          <ButtonLink href="/contact" variant="secondary">
+          <ButtonLink href="/contact" locale={locale} variant="secondary">
             {t("cta.bookCall")}
           </ButtonLink>
         </div>

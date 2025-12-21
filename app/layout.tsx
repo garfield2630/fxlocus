@@ -1,21 +1,10 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Inter, Noto_Sans_SC } from "next/font/google";
 import { defaultLocale } from "@/i18n/routing";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap"
-});
-
-const notoSans = Noto_Sans_SC({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-noto",
-  display: "swap"
-});
+import "@fontsource/inter/latin.css";
+import "@fontsource/noto-sans-sc/chinese-simplified.css";
 
 export const metadata: Metadata = {
   icons: {
@@ -30,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang={isEn ? "en" : "zh"}
-      className={`${inter.variable} ${notoSans.variable} ${isEn ? "font-en" : "font-zh"}`}
+      className={isEn ? "font-en" : "font-zh"}
       suppressHydrationWarning
     >
       <body>{children}</body>

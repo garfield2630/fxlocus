@@ -1,0 +1,12 @@
+{
+  "play": "Play",
+  "pause": "Pause",
+  "seek": "Seek",
+  "mute": "Mute",
+  "unmute": "Unmute",
+  "volume": "Volume",
+  "speed": "Speed",
+  "quality": "Quality",
+  "fullscreen": "Fullscreen"
+}
+

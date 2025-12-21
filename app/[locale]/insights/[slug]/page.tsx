@@ -3,16 +3,20 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
 import { Link } from "@/i18n/navigation";
+import { defaultLocale } from "@/i18n/routing";
+import type { Locale } from "@/i18n/routing";
+import { getDataProvider } from "@/lib/data";
+import type { Pillar } from "@/lib/domain/types";
 import { renderMarkdown, getTocFromMarkdown } from "@/lib/markdown";
-import { posts } from "@/lib/mock/posts";
-import type { Locale } from "@/lib/mock/types";
 
 type Props = {
   params: { locale: Locale; slug: string };
 };
 
-function pick(locale: Locale, value: { zh: string; en: string }) {
-  return locale === "en" ? value.en : value.zh;
+function labelKey(pillar: Pillar) {
+  if (pillar === "mind") return "mind";
+  if (pillar === "market") return "market";
+  return "price";
 }
 
 function extractBullets(markdown: string, heading: string) {
@@ -39,29 +43,29 @@ function extractBullets(markdown: string, heading: string) {
   return bullets;
 }
 
-export function generateStaticParams() {
-  return posts.map((post) => ({ slug: post.slug }));
+export async function generateStaticParams() {
+  const provider = getDataProvider();
+  const insights = await provider.listInsights(defaultLocale);
+  return insights.map((post) => ({ slug: post.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const post = posts.find((p) => p.slug === params.slug);
+  const provider = getDataProvider();
+  const post = await provider.getInsight(params.locale, params.slug);
   if (!post) return {};
-
-  const title = pick(params.locale, post.title);
-  const description = pick(params.locale, post.excerpt);
-
-  return { title, description };
+  return { title: post.title, description: post.excerpt };
 }
 
 export default async function InsightDetailPage({ params }: Props) {
   const locale = params.locale;
-  const post = posts.find((p) => p.slug === params.slug);
+  const provider = getDataProvider();
+  const post = await provider.getInsight(locale, params.slug);
   if (!post) notFound();
 
   const t = await getTranslations({ locale, namespace: "insights" });
   const tCommon = await getTranslations({ locale, namespace: "common" });
 
-  const markdown = pick(locale, post.contentMd);
+  const markdown = post.contentMd;
   const html = await renderMarkdown(markdown);
   const toc = getTocFromMarkdown(markdown);
 
@@ -70,39 +74,40 @@ export default async function InsightDetailPage({ params }: Props) {
   const checklist = extractBullets(markdown, checklistHeading);
   const falsification = extractBullets(markdown, falsificationHeading);
 
-  const related = posts
+  const all = await provider.listInsights(locale);
+  const related = all
     .filter((p) => p.slug !== post.slug)
     .filter((p) => p.pillar === post.pillar)
     .slice(0, 3)
     .map((p) => ({
       slug: p.slug,
-      title: pick(locale, p.title),
-      excerpt: pick(locale, p.excerpt)
+      title: p.title,
+      excerpt: p.excerpt
     }));
 
   return (
     <div className="space-y-12">
       <header className="pt-6">
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-200/70">
-          <span className="fx-pill">{tCommon(`labels.${post.pillar}` as any)}</span>
+          <span className="fx-pill">{tCommon(`labels.${labelKey(post.pillar)}` as any)}</span>
           <span>
-            {t("detail.readingTime")}: {post.readingTime}
+            {t("detail.readingTime")}: {post.readingMinutes ?? 0}
             {tCommon("ui.minutesShort")}
           </span>
           <span>·</span>
-          <span>{post.publishedAt}</span>
+          <span>{post.publishedAt ?? ""}</span>
         </div>
 
         <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-50 md:text-5xl">
-          {pick(locale, post.title)}
+          {post.title}
         </h1>
-        <p className="fx-lead">{pick(locale, post.excerpt)}</p>
+        <p className="fx-lead">{post.excerpt}</p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Link href="/insights" className="fx-btn fx-btn-secondary">
+          <Link href="/insights" locale={locale} className="fx-btn fx-btn-secondary">
             {tCommon("cta.back")}
           </Link>
-          <Link href="/framework" className="fx-btn fx-btn-secondary">
+          <Link href="/framework" locale={locale} className="fx-btn fx-btn-secondary">
             {tCommon("cta.enterFramework")}
           </Link>
         </div>
@@ -175,7 +180,7 @@ export default async function InsightDetailPage({ params }: Props) {
         <h2 className="fx-h2">{t("detail.related")}</h2>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {related.map((p) => (
-            <Link key={p.slug} href={`/insights/${p.slug}`} className="fx-card p-6">
+            <Link key={p.slug} href={`/insights/${p.slug}`} locale={locale} className="fx-card p-6">
               <h3 className="text-base font-semibold text-slate-50">{p.title}</h3>
               <p className="mt-2 text-sm leading-6 text-slate-200/70">{p.excerpt}</p>
             </Link>
