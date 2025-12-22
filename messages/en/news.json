@@ -30,5 +30,36 @@
       "calendar": "Macro calendar (placeholder)",
       "recommend": "Courses & training picks (placeholder)"
     }
+  },
+  "filters": {
+    "title": "Filters",
+    "category": "Category",
+    "time": "Time window",
+    "customFrom": "From",
+    "customTo": "To",
+    "range": {
+      "today": "Today",
+      "week": "This week",
+      "month": "This month",
+      "custom": "Custom range"
+    },
+    "categories": {
+      "fx": "FX",
+      "stocks": "Stocks",
+      "commodities": "Commodities",
+      "crypto": "Crypto",
+      "macro": "Macro"
+    }
+  },
+  "feed": {
+    "title": "Feed",
+    "loading": "Loading news...",
+    "empty": "No news items found for this filter.",
+    "error": "Unable to load the feed right now.",
+    "readMore": "Read more"
+  },
+  "trending": {
+    "title": "Trending",
+    "empty": "No trending items yet."
   }
 }
