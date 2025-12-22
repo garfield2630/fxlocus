@@ -15,6 +15,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid email." }, { status: 400 });
     }
 
+    const phone =
+      body?.phone && typeof body.phone === "object"
+        ? {
+            country: typeof body.phone.country === "string" ? body.phone.country : "",
+            dialCode: typeof body.phone.dialCode === "string" ? body.phone.dialCode : "",
+            e164: typeof body.phone.e164 === "string" ? body.phone.e164 : "",
+            nationalNumber: typeof body.phone.nationalNumber === "string" ? body.phone.nationalNumber : ""
+          }
+        : null;
+
+    const baseMessage = typeof body.message === "string" ? body.message : "";
+    const phoneNote = phone?.e164
+      ? `\n\n[Phone]\nE.164: ${phone.e164}\nCountry: ${phone.country || "-"}\nDial: ${phone.dialCode || "-"}\nNational: ${phone.nationalNumber || "-"}`
+      : "";
+
     const hasSupabase =
       Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
@@ -34,7 +49,7 @@ export async function POST(request: Request) {
         email: body.email,
         wechat: typeof body.wechat === "string" ? body.wechat : null,
         intent: typeof body.intent === "string" ? body.intent : null,
-        message: typeof body.message === "string" ? body.message : null,
+        message: (baseMessage + phoneNote).trim() || null,
         instruments: Array.isArray(body.instruments) ? body.instruments : [],
         bottleneck: typeof body.bottleneck === "string" ? body.bottleneck : null
       }

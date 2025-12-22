@@ -1,4 +1,18 @@
 {
+  "hero": {
+    "title": "About: process over stories",
+    "subtitle": "FxLocus is built around one belief: you don’t rise to your goals, you fall to your process. We focus on trading psychology, market understanding, and price action—not as slogans, but as a closed training loop you can repeat and audit. The work emphasizes clarity, falsification, risk boundaries, and reviewable behavior rather than persuasive narratives or performance hype.",
+    "highlights": [
+      "A training-first brand: outputs and reviews come before tactics.",
+      "A closed loop: perception → execution → review → iteration.",
+      "A clear boundary: education only, no investment advice."
+    ],
+    "cta": {
+      "primary": "Explore the framework",
+      "secondary": "Book a call"
+    },
+    "risk": "Educational content only. Not investment advice; trading involves risk."
+  },
   "title": "About",
   "lead": "I care more about repeatable process than persuasive stories.",
   "sections": {

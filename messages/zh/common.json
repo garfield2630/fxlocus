@@ -16,10 +16,20 @@
     "market": "市场认知",
     "price": "K线本质"
   },
+  "form": {
+    "country": "国家/地区",
+    "phone": "手机号",
+    "placeholders": {
+      "phone": "请输入手机号…"
+    }
+  },
   "ui": {
     "menu": "菜单",
     "close": "关闭",
     "nav": "导航",
+    "copied": "已复制",
+    "searchCountry": "搜索国家/地区…",
+    "noResults": "无匹配结果",
     "capabilities": "系统能力",
     "step": "步骤",
     "metric": "评估指标",

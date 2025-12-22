@@ -1,0 +1,34 @@
+{
+  "hero": {
+    "eyebrow": "Market workspace",
+    "title": "Markets",
+    "subtitle": "Build perception first, then execution. Markets will become the unified workspace for instruments, charts, and a risk-bounded simulation flow—so every click produces reviewable evidence. The goal is to make context, risk, and decisions explicit before you touch strategy details.",
+    "highlights": [
+      "Universe + search + watchlist built for training.",
+      "Chart area designed to support narratives and falsification.",
+      "Simulation panel with risk controls and journaling."
+    ],
+    "cta": {
+      "primary": "Open Markets",
+      "secondary": "Read News"
+    },
+    "risk": "Educational use only. Not investment advice; trading involves risk."
+  },
+  "layout": {
+    "left": {
+      "title": "Universe",
+      "search": "Search / symbol lookup (placeholder)",
+      "categories": "Categories & filters (placeholder)",
+      "watchlist": "Watchlist & notes (placeholder)"
+    },
+    "middle": {
+      "title": "Chart",
+      "chart": "Chart area (placeholder)"
+    },
+    "right": {
+      "title": "Simulation",
+      "paper": "Paper trading panel (placeholder)",
+      "risk": "Risk controls & journal (placeholder)"
+    }
+  }
+}

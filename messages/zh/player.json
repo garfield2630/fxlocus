@@ -7,6 +7,7 @@
   "volume": "音量",
   "speed": "倍速",
   "quality": "清晰度",
-  "fullscreen": "全屏"
+  "fullscreen": "全屏",
+  "defaultMute": "默认静音"
 }
 

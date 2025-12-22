@@ -73,6 +73,8 @@ export function SiteHeader() {
       { key: "insights", href: "/insights" },
       { key: "videos", href: "/videos" },
       { key: "courses", href: "/courses" },
+      { key: "markets", href: "/markets" },
+      { key: "news", href: "/news" },
       { key: "tools", href: "/tools" },
       { key: "system", href: "/trade-system" },
       { key: "donate", href: "/donate" },

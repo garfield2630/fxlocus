@@ -1,11 +1,14 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+
+import { PhoneField, type PhoneFieldValue } from "@/components/forms/PhoneField";
 
 type FormState = {
   name: string;
   email: string;
+  phone: PhoneFieldValue | null;
   wechat: string;
   intent: string;
   message: string;
@@ -14,6 +17,7 @@ type FormState = {
 };
 
 export function ContactForm() {
+  const locale = useLocale();
   const t = useTranslations("contact");
   const tCommon = useTranslations("common");
 
@@ -53,6 +57,7 @@ export function ContactForm() {
   const [state, setState] = useState<FormState>({
     name: "",
     email: "",
+    phone: null,
     wechat: "",
     intent: "call",
     message: "",
@@ -94,6 +99,7 @@ export function ContactForm() {
       setState({
         name: "",
         email: "",
+        phone: null,
         wechat: "",
         intent: "call",
         message: "",
@@ -134,6 +140,17 @@ export function ContactForm() {
             className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-50 placeholder:text-slate-200/40"
           />
         </label>
+
+        <div className="md:col-span-2">
+          <PhoneField
+            label={t("form.phoneGroup")}
+            countryLabel={t("form.country")}
+            phoneLabel={t("form.phone")}
+            value={state.phone}
+            onChange={(phone) => setState((p) => ({ ...p, phone }))}
+            defaultCountry={locale === "zh" ? "CN" : "US"}
+          />
+        </div>
 
         <label className="block">
           <span className="text-xs font-semibold tracking-[0.14em] text-slate-200/60">

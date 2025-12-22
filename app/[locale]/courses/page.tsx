@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { PageHero } from "@/components/marketing/PageHero";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
 import { getDataProvider } from "@/lib/data";
@@ -28,27 +29,24 @@ export default async function CoursesPage({ params }: Props) {
   const locale = params.locale;
   const t = await getTranslations({ locale, namespace: "courses" });
   const tCommon = await getTranslations({ locale, namespace: "common" });
+  const highlights = t.raw("hero.highlights") as string[];
 
   const provider = getDataProvider();
   const courses = await provider.listCourses(locale);
 
   return (
     <div className="space-y-14 md:space-y-20">
-      <header className="pt-6">
-        <span className="fx-eyebrow">{tCommon(locale === "en" ? "brandEn" : "brandCn")}</span>
-        <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-50 md:text-5xl">
-          {t("title")}
-        </h1>
-        <p className="fx-lead">{t("lead")}</p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Link href="/framework" locale={locale} className="fx-btn fx-btn-secondary">
-            {tCommon("cta.enterFramework")}
-          </Link>
-          <Link href="/contact" locale={locale} className="fx-btn fx-btn-secondary">
-            {tCommon("cta.bookCall")}
-          </Link>
-        </div>
-      </header>
+      <PageHero
+        eyebrow={tCommon(locale === "en" ? "brandEn" : "brandCn")}
+        title={t("hero.title")}
+        subtitle={t("hero.subtitle")}
+        highlights={highlights}
+        ctas={[
+          { href: "/framework", label: t("hero.cta.primary"), variant: "secondary", locale },
+          { href: "/contact", label: t("hero.cta.secondary"), variant: "secondary", locale }
+        ]}
+        riskNote={t("hero.risk")}
+      />
 
       <section className="fx-section">
         <div className="grid gap-4 md:grid-cols-2">

@@ -25,6 +25,8 @@ import enTools from "../messages/en/tools.json";
 import enPlayer from "../messages/en/player.json";
 import enDonate from "../messages/en/donate.json";
 import enAdminSystem from "../messages/en/adminSystem.json";
+import enMarkets from "../messages/en/markets.json";
+import enNews from "../messages/en/news.json";
 
 import zhAbout from "../messages/zh/about.json";
 import zhCommon from "../messages/zh/common.json";
@@ -50,6 +52,8 @@ import zhTools from "../messages/zh/tools.json";
 import zhPlayer from "../messages/zh/player.json";
 import zhDonate from "../messages/zh/donate.json";
 import zhAdminSystem from "../messages/zh/adminSystem.json";
+import zhMarkets from "../messages/zh/markets.json";
+import zhNews from "../messages/zh/news.json";
 
 const messagesByLocale = {
   zh: {
@@ -76,7 +80,9 @@ const messagesByLocale = {
     tools: zhTools,
     player: zhPlayer,
     donate: zhDonate,
-    adminSystem: zhAdminSystem
+    adminSystem: zhAdminSystem,
+    markets: zhMarkets,
+    news: zhNews
   },
   en: {
     about: enAbout,
@@ -102,7 +108,9 @@ const messagesByLocale = {
     tools: enTools,
     player: enPlayer,
     donate: enDonate,
-    adminSystem: enAdminSystem
+    adminSystem: enAdminSystem,
+    markets: enMarkets,
+    news: enNews
   }
 } as const;
 

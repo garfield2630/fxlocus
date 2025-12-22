@@ -1,4 +1,18 @@
 {
+  "hero": {
+    "title": "Tools: make risk visible",
+    "subtitle": "Tools don’t create edge—they enforce clarity. These calculators help you translate intent into numbers: how much you can lose, what size that implies, and what your plan means in R and currency terms. Use them to build a risk boundary and a repeatable execution gate, then review decisions with evidence rather than emotion.",
+    "highlights": [
+      "Position sizing from explicit risk, not guesswork.",
+      "R:R and pip value to quantify the plan upfront.",
+      "Built to support reviewable, auditable execution."
+    ],
+    "cta": {
+      "primary": "Explore the framework",
+      "secondary": "Book a call"
+    },
+    "risk": "Educational content only. Not investment advice; trading involves risk."
+  },
   "title": "Tools",
   "lead": "Define risk, quantify size, and make execution explicit.",
   "position": {

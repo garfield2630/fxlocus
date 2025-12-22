@@ -1,7 +1,22 @@
 {
+  "hero": {
+    "title": "Donate now, become a member",
+    "subtitle": "This is a 90‑day trial membership supported by voluntary contributions. What you get is a training environment: cadence, deliverables, reviews, and community accountability—built around Mind, Market understanding, and Price Action. What you do not get is any performance promise. Rebuild perception and execution first; outcomes are a byproduct, not a guarantee.",
+    "highlights": [
+      "90‑day trial membership based on participation.",
+      "Training loop + deliverables + review, not signals.",
+      "Clear risk boundary: no investment advice, no guarantees."
+    ],
+    "cta": {
+      "primary": "Apply now",
+      "secondary": "See programs"
+    },
+    "risk": "Educational content only. Not investment advice; donations do not imply any profit-sharing or performance promise."
+  },
   "eyebrow": "Membership",
   "title": "Donate Now, Become a Member!",
   "lead": "A 90-day trial membership supported by contributions. No performance promises. Training and community access are participation-based.",
+  "footerRisk": "Risk notice: Donations are voluntary support and do not imply any investment service, profit-sharing, or performance guarantee. All content is educational; trading is high risk.",
   "pricing": {
     "amountLabel": "Current amount",
     "countdownLabel": "Resets in",
@@ -37,6 +52,8 @@
       "email": { "label": "Email", "placeholder": "Your most used email address" },
       "telegram": { "label": "Telegram/WhatsApp (optional)", "placeholder": "Your handle or number" },
       "wechat": { "label": "WeChat (optional)", "placeholder": "Optional WeChat ID" },
+      "phoneGroup": "Country/Region & phone",
+      "phone": { "label": "Phone number", "placeholder": "Your phone number (saved as E.164)" },
       "country": { "label": "Country/Region", "placeholder": "Where are you based?" },
       "years": { "label": "Trading years", "placeholder": "Select…" },
       "weekly": { "label": "Weekly trading frequency", "placeholder": "e.g., 5–15 trades/week, or 2 sessions/week" },

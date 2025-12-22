@@ -8,6 +8,8 @@ type Props = {
   poster?: string;
 };
 
+const DEFAULT_MUTE_STORAGE_KEY = "fxlocus_player_default_muted";
+
 function formatTime(totalSeconds: number) {
   if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return "0:00";
   const seconds = Math.floor(totalSeconds % 60);
@@ -28,7 +30,8 @@ export function VideoPlayer({ src, poster }: Props) {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(0.9);
-  const [muted, setMuted] = useState(false);
+  const [defaultMuted, setDefaultMuted] = useState(true);
+  const [muted, setMuted] = useState(true);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [quality, setQuality] = useState("1080p");
 
@@ -44,6 +47,29 @@ export function VideoPlayer({ src, poster }: Props) {
     video.volume = volume;
     video.playbackRate = playbackRate;
   }, [muted, playbackRate, volume]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DEFAULT_MUTE_STORAGE_KEY);
+      if (raw === "0") {
+        setDefaultMuted(false);
+        setMuted(false);
+      } else if (raw === "1") {
+        setDefaultMuted(true);
+        setMuted(true);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(DEFAULT_MUTE_STORAGE_KEY, defaultMuted ? "1" : "0");
+    } catch {
+      // ignore storage errors
+    }
+  }, [defaultMuted]);
 
   useEffect(() => {
     applyPlaybackState();
@@ -65,6 +91,14 @@ export function VideoPlayer({ src, poster }: Props) {
 
   const toggleMute = useCallback(() => {
     setMuted((v) => !v);
+  }, []);
+
+  const toggleDefaultMute = useCallback(() => {
+    setDefaultMuted((v) => {
+      const next = !v;
+      setMuted(next);
+      return next;
+    });
   }, []);
 
   const onSeek = useCallback((nextPercent: number) => {
@@ -120,7 +154,10 @@ export function VideoPlayer({ src, poster }: Props) {
   }, []);
 
   return (
-    <div ref={containerRef} className="fx-card overflow-hidden p-0">
+    <div
+      ref={containerRef}
+      className="fx-card overflow-hidden p-0 [writing-mode:horizontal-tb] [text-orientation:mixed]"
+    >
       <div className="relative aspect-video w-full bg-black/40">
         <video
           ref={videoRef}
@@ -163,17 +200,17 @@ export function VideoPlayer({ src, poster }: Props) {
               aria-label={t("seek")}
             />
 
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-200/80">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-200/80 [writing-mode:horizontal-tb] [text-orientation:mixed]">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={togglePlay}
-                  className="rounded-full border border-white/10 bg-white/5 px-3 py-2 font-semibold text-slate-50 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40"
+                  className="whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-2 font-semibold text-slate-50 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40"
                 >
                   {isPlaying ? t("pause") : t("play")}
                 </button>
 
-                <span className="tabular-nums">
+                <span className="tabular-nums whitespace-nowrap">
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
               </div>
@@ -182,13 +219,13 @@ export function VideoPlayer({ src, poster }: Props) {
                 <button
                   type="button"
                   onClick={toggleMute}
-                  className="rounded-full border border-white/10 bg-white/5 px-3 py-2 font-semibold text-slate-50 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40"
+                  className="whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-2 font-semibold text-slate-50 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40"
                 >
                   {muted ? t("unmute") : t("mute")}
                 </button>
 
-                <label className="flex items-center gap-2">
-                  <span className="text-slate-200/70">{t("volume")}</span>
+                <label className="flex items-center gap-2 whitespace-nowrap">
+                  <span className="text-slate-200/70 whitespace-nowrap">{t("volume")}</span>
                   <input
                     type="range"
                     min={0}
@@ -201,8 +238,8 @@ export function VideoPlayer({ src, poster }: Props) {
                   />
                 </label>
 
-                <label className="flex items-center gap-2">
-                  <span className="text-slate-200/70">{t("speed")}</span>
+                <label className="flex items-center gap-2 whitespace-nowrap">
+                  <span className="text-slate-200/70 whitespace-nowrap">{t("speed")}</span>
                   <select
                     value={playbackRate}
                     onChange={(e) => setPlaybackRate(Number(e.target.value))}
@@ -217,8 +254,8 @@ export function VideoPlayer({ src, poster }: Props) {
                   </select>
                 </label>
 
-                <label className="flex items-center gap-2">
-                  <span className="text-slate-200/70">{t("quality")}</span>
+                <label className="flex items-center gap-2 whitespace-nowrap">
+                  <span className="text-slate-200/70 whitespace-nowrap">{t("quality")}</span>
                   <select
                     value={quality}
                     onChange={(e) => setQuality(e.target.value)}
@@ -230,10 +267,21 @@ export function VideoPlayer({ src, poster }: Props) {
                   </select>
                 </label>
 
+                <label className="flex items-center gap-2 whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-2 font-semibold text-slate-50">
+                  <input
+                    type="checkbox"
+                    className="accent-sky-300"
+                    checked={defaultMuted}
+                    onChange={toggleDefaultMute}
+                    aria-label={t("defaultMute")}
+                  />
+                  <span className="text-xs">{t("defaultMute")}</span>
+                </label>
+
                 <button
                   type="button"
                   onClick={toggleFullscreen}
-                  className="rounded-full border border-white/10 bg-white/5 px-3 py-2 font-semibold text-slate-50 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40"
+                  className="whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-2 font-semibold text-slate-50 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40"
                 >
                   {t("fullscreen")}
                 </button>

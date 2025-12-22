@@ -1,4 +1,18 @@
 {
+  "hero": {
+    "title": "Programs: training you can audit",
+    "subtitle": "Programs are not promises—they’re mechanisms. Each tier is designed to turn Mind, Market, and Price Action into repeatable execution through cadence, deliverables, and review. You’ll practice writing context and falsification points, running an execution gate, and auditing behavior with a scorecard. The objective is consistency under pressure, with risk boundaries made explicit.",
+    "highlights": [
+      "Clear cadence: input → break down → execute → review.",
+      "Deliverables that force clarity and reduce improvisation.",
+      "Evaluation via logs and corrective actions, not outcomes."
+    ],
+    "cta": {
+      "primary": "Book a call",
+      "secondary": "Explore the framework"
+    },
+    "risk": "Educational content only. Not investment advice; trading involves risk."
+  },
   "title": "Programs",
   "lead": "Programs are training mechanisms: deliverables, cadence, and evaluation must be explicit.",
   "tiers": {

@@ -1,4 +1,18 @@
 {
+  "hero": {
+    "title": "Framework: Mind · Market · Price Action",
+    "subtitle": "Better trading is rarely about more tricks—it’s about a stable loop: perception → execution → review. This framework breaks skill into three pillars and turns them into weekly drills with audit-ready outputs. You learn to describe context, write falsification points before entry, size risk consistently, and review behavior with evidence. Rebuild cognition and execution first; strategy details come last.",
+    "highlights": [
+      "Three pillars mapped to a weekly training cadence.",
+      "Falsification-first thinking for every idea and entry.",
+      "Audit-ready outputs: checklists, logs, and review notes."
+    ],
+    "cta": {
+      "primary": "See programs",
+      "secondary": "Book a call"
+    },
+    "risk": "Educational content only. Not investment advice; trading involves substantial risk."
+  },
   "title": "Framework",
   "lead": "Three pillars, a weekly training loop, and audit-ready outputs. Build an operating system for repeatable execution.",
   "sections": {

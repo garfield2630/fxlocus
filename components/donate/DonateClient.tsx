@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
 
+import { PhoneField, type PhoneFieldValue } from "@/components/forms/PhoneField";
 import { Button } from "@/components/ui/Button";
 
 const RichTextEditor = dynamic(
@@ -21,7 +22,8 @@ type DonateApplication = {
   email: string;
   telegramWhatsApp?: string;
   wechat?: string;
-  countryRegion: string;
+  phone?: PhoneFieldValue;
+  countryRegion?: string; // legacy
   tradingYears: string;
   instruments: string[];
   bottlenecks: string[];
@@ -79,19 +81,21 @@ function formatHms(totalSeconds: number) {
 export function DonateClient() {
   const locale = useLocale() as Locale;
   const t = useTranslations("donate");
+  const tCommon = useTranslations("common");
 
   const [now, setNow] = useState(() => new Date());
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState<null | { id: string; createdAt: string }>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [website, setWebsite] = useState("");
+  const [walletCopied, setWalletCopied] = useState(false);
 
   const [form, setForm] = useState(() => ({
     name: "",
     email: "",
     telegramWhatsApp: "",
     wechat: "",
-    countryRegion: "",
+    phone: null as PhoneFieldValue | null,
     tradingYears: "",
     instruments: [] as string[],
     bottlenecks: [] as string[],
@@ -179,12 +183,15 @@ export function DonateClient() {
 
     required("name", form.name);
     required("email", form.email);
-    required("countryRegion", form.countryRegion);
     required("tradingYears", form.tradingYears);
     required("weeklyFrequency", form.weeklyFrequency);
     required("whyJoin", form.whyJoin);
     required("goal90d", form.goal90d);
     required("thoughtsHtml", form.thoughtsHtml.replace(/<[^>]*>/g, "").trim());
+
+    if (!form.phone?.e164 || form.phone.e164.replace(/\D/g, "").length < 8) {
+      nextErrors.phone = t("validation.required");
+    }
 
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
     if (form.email.trim() && !emailOk) nextErrors.email = t("validation.invalidEmail");
@@ -231,7 +238,7 @@ export function DonateClient() {
       email: form.email.trim(),
       telegramWhatsApp: form.telegramWhatsApp.trim() || undefined,
       wechat: form.wechat.trim() || undefined,
-      countryRegion: form.countryRegion.trim(),
+      phone: form.phone ?? undefined,
       tradingYears: form.tradingYears,
       instruments: form.instruments,
       bottlenecks: form.bottlenecks,
@@ -254,24 +261,28 @@ export function DonateClient() {
   };
 
   const rulesItems = t.raw("rules.items") as unknown as string[];
+  const walletAddress = t("rules.walletValue");
+
+  const copyWallet = async () => {
+    try {
+      await navigator.clipboard.writeText(walletAddress);
+      setWalletCopied(true);
+      window.setTimeout(() => setWalletCopied(false), 1500);
+    } catch {
+      // ignore
+    }
+  };
 
   return (
-    <div className="space-y-12 md:space-y-16">
-      <header className="pt-6">
-        <span className="fx-eyebrow">{t("eyebrow")}</span>
-        <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-50 md:text-5xl">
-          {t("title")}
-        </h1>
-        <p className="fx-lead">{t("lead")}</p>
-      </header>
-
-      <section className="fx-card p-7">
-        <div className="grid gap-6 md:grid-cols-3">
+    <div className="space-y-10 md:space-y-12">
+      <section className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-slate-950/40 p-7 md:p-10">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.18),transparent_55%)]" />
+        <div className="relative grid gap-6 md:grid-cols-3">
           <div>
             <div className="text-xs font-semibold tracking-[0.16em] text-slate-200/70">
               {t("pricing.amountLabel")}
             </div>
-            <div className="mt-3 text-4xl font-semibold tracking-tight text-slate-50">
+            <div className="mt-3 text-5xl font-semibold tracking-tight text-slate-50 tabular-nums">
               ${price}
             </div>
           </div>
@@ -279,7 +290,7 @@ export function DonateClient() {
             <div className="text-xs font-semibold tracking-[0.16em] text-slate-200/70">
               {t("pricing.countdownLabel")}
             </div>
-            <div className="mt-3 text-4xl font-semibold tracking-tight text-slate-50">
+            <div className="mt-3 text-5xl font-semibold tracking-tight text-slate-50 tabular-nums">
               {countdown}
             </div>
           </div>
@@ -297,23 +308,37 @@ export function DonateClient() {
         </div>
       </section>
 
-      <section className="fx-card p-7">
+      <section className="space-y-4">
         <h2 className="text-xl font-semibold text-slate-50">{t("rules.title")}</h2>
-        <ul className="mt-5 space-y-3 text-sm leading-7 text-slate-200/75">
-          {rulesItems.map((item) => (
-            <li key={item} className="flex gap-3">
-              <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" />
-              <span>{item}</span>
-            </li>
+        <div className="grid gap-3">
+          {rulesItems.map((item, index) => (
+            <div key={item} className="fx-card p-6">
+              <div className="flex gap-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 font-mono text-xs font-semibold text-slate-50 tabular-nums">
+                  {String(index + 1).padStart(2, "0")}
+                </div>
+                <p className="text-sm leading-7 text-slate-200/75">{item}</p>
+              </div>
+            </div>
           ))}
-        </ul>
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100">
-          <div className="text-xs font-semibold tracking-[0.16em] text-slate-200/70">
-            {t("rules.walletLabel")}
-          </div>
-          <div className="mt-1 break-all font-mono text-slate-50">{t("rules.walletValue")}</div>
         </div>
       </section>
+
+      <section className="fx-card p-7">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold text-slate-50">{t("rules.walletLabel")}</h2>
+          <Button variant="secondary" size="sm" className="rounded-full" onClick={copyWallet}>
+            {walletCopied ? tCommon("ui.copied") : tCommon("cta.copy")}
+          </Button>
+        </div>
+        <pre className="mt-5 overflow-auto rounded-3xl border border-white/10 bg-slate-950/40 p-5 text-sm text-slate-50">
+          <code className="break-all font-mono">{walletAddress}</code>
+        </pre>
+      </section>
+
+      <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 px-6 py-5 text-sm leading-7 text-rose-100/90">
+        {t("footerRisk")}
+      </div>
 
       {open ? (
         <div
@@ -408,18 +433,18 @@ export function DonateClient() {
                         placeholder={t("form.fields.wechat.placeholder")}
                       />
                     </label>
-                    <label className="block md:col-span-2">
-                      <div className="text-xs font-semibold text-slate-200/70">{t("form.fields.country.label")}</div>
-                      <input
-                        className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40"
-                        value={form.countryRegion}
-                        onChange={(e) => setForm((p) => ({ ...p, countryRegion: e.target.value }))}
-                        placeholder={t("form.fields.country.placeholder")}
+                    <div className="md:col-span-2">
+                      <PhoneField
+                        label={t("form.fields.phoneGroup")}
+                        countryLabel={t("form.fields.country.label")}
+                        phoneLabel={t("form.fields.phone.label")}
+                        value={form.phone}
+                        onChange={(phone) => setForm((p) => ({ ...p, phone }))}
+                        required
+                        defaultCountry={locale === "zh" ? "CN" : "US"}
+                        error={errors.phone}
                       />
-                      {errors.countryRegion ? (
-                        <div className="mt-2 text-xs text-rose-300">{errors.countryRegion}</div>
-                      ) : null}
-                    </label>
+                    </div>
                   </div>
                 </div>
 

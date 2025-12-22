@@ -22,6 +22,12 @@ function pick(locale: Locale, value: { zh: string; en: string }) {
   return locale === "en" ? value.en : value.zh;
 }
 
+function youtubeThumbnailFromEmbedUrl(embedUrl: string) {
+  const match = /youtube\.com\/embed\/([^?]+)/.exec(embedUrl);
+  if (!match) return "";
+  return `https://i.ytimg.com/vi/${match[1]}/hqdefault.jpg`;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await getTranslations({ locale: params.locale, namespace: "seo" });
   return {
@@ -44,7 +50,7 @@ export default async function HomePage({ params }: Props) {
     provider.listCourses(locale)
   ]);
 
-  const articlePreviews = insights.slice(0, 4).map((post) => ({
+  const articlePreviews = insights.slice(0, 6).map((post) => ({
     slug: post.slug,
     pillar: post.pillar,
     title: post.title,
@@ -53,20 +59,30 @@ export default async function HomePage({ params }: Props) {
     publishedAt: post.publishedAt ?? ""
   }));
 
-  const videoPreviews = videos.slice(0, 3).map((video) => ({
+  const videoPreviews = videos.slice(0, 4).map((video) => ({
     slug: video.slug,
     pillar: video.pillar,
     title: video.title,
     excerpt: video.excerpt,
     durationMin: video.durationMin ?? 0,
-    publishedAt: video.publishedAt ?? ""
+    publishedAt: video.publishedAt ?? "",
+    thumbnail: video.cover
+      ? video.cover
+      : video.provider === "youtube"
+        ? youtubeThumbnailFromEmbedUrl(video.embedUrl)
+        : ""
   }));
 
-  const coursePreviews = courses.slice(0, 3).map((course) => ({
+  const coursePreviews = courses.slice(0, 4).map((course) => ({
     slug: course.slug,
     pillar: course.pillar,
     title: course.title,
-    excerpt: course.excerpt
+    excerpt: course.excerpt,
+    access: course.access,
+    level: course.level,
+    lessonsCount: course.lessons.length,
+    estimatedHours: course.estimatedHours ?? 0,
+    tags: course.tags
   }));
 
   const pathSteps = ["s1", "s2", "s3", "s4", "s5"] as const;
@@ -83,14 +99,48 @@ export default async function HomePage({ params }: Props) {
         title={tHome("about.title")}
         lead={tHome("about.lead")}
       >
-        <div className="mt-10 grid gap-8 lg:grid-cols-2 lg:items-start">
-          <div className="space-y-4 text-sm leading-7 text-slate-200/75 md:text-base">
-            <p>{tHome("about.body.p1")}</p>
-            <p>{tHome("about.body.p2")}</p>
-            <p>{tHome("about.body.p3")}</p>
+        <div className="mt-10 space-y-10">
+          <div className="mx-auto w-full max-w-5xl">
+            <VideoPlayer src="/test/test.mp4" />
+            <p className="mt-3 text-xs leading-5 text-slate-200/60">
+              {tHome("about.videoDisclaimer")}
+            </p>
           </div>
 
-          <VideoPlayer src="/test/test.mp4" />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card className="p-7">
+              <div className="text-xs font-semibold tracking-[0.16em] text-slate-200/60">
+                {tHome("about.blocks.philosophyTitle")}
+              </div>
+              <div className="mt-4 space-y-4 text-sm leading-7 text-slate-200/75 md:text-base">
+                <p>{tHome("about.body.p1")}</p>
+                <p>{tHome("about.body.p2")}</p>
+              </div>
+            </Card>
+
+            <Card className="p-7">
+              <div className="text-xs font-semibold tracking-[0.16em] text-slate-200/60">
+                {tHome("about.blocks.methodTitle")}
+              </div>
+              <div className="mt-4 space-y-4 text-sm leading-7 text-slate-200/75 md:text-base">
+                <p>{tHome("about.body.p3")}</p>
+
+                <div className="mt-6">
+                  <div className="text-xs font-semibold tracking-[0.16em] text-slate-200/60">
+                    {tHome("about.blocks.loopTitle")}
+                  </div>
+                  <ul className="mt-3 space-y-2 text-sm text-slate-200/75">
+                    {(tHome.raw("about.blocks.loopItems") as string[]).map((item) => (
+                      <li key={item} className="flex gap-2">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
       </Section>
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { PageHero } from "@/components/marketing/PageHero";
 import { InsightsExplorer } from "@/components/insights/InsightsExplorer";
 import { Link } from "@/i18n/navigation";
 import { getDataProvider } from "@/lib/data";
@@ -22,6 +23,7 @@ export default async function InsightsPage({ params }: Props) {
   const locale = params.locale;
   const t = await getTranslations({ locale, namespace: "insights" });
   const tCommon = await getTranslations({ locale, namespace: "common" });
+  const highlights = t.raw("hero.highlights") as string[];
 
   const provider = getDataProvider();
   const insights = await provider.listInsights(locale);
@@ -38,21 +40,17 @@ export default async function InsightsPage({ params }: Props) {
 
   return (
     <div className="space-y-10">
-      <header className="pt-6">
-        <span className="fx-eyebrow">{tCommon(locale === "en" ? "brandEn" : "brandCn")}</span>
-        <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-50 md:text-5xl">
-          {t("title")}
-        </h1>
-        <p className="fx-lead">{t("lead")}</p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Link href="/framework" locale={locale} className="fx-btn fx-btn-secondary">
-            {tCommon("cta.enterFramework")}
-          </Link>
-          <Link href="/programs" locale={locale} className="fx-btn fx-btn-secondary">
-            {tCommon("cta.getStarted")}
-          </Link>
-        </div>
-      </header>
+      <PageHero
+        eyebrow={tCommon(locale === "en" ? "brandEn" : "brandCn")}
+        title={t("hero.title")}
+        subtitle={t("hero.subtitle")}
+        highlights={highlights}
+        ctas={[
+          { href: "/framework", label: t("hero.cta.primary"), variant: "secondary", locale },
+          { href: "/programs", label: t("hero.cta.secondary"), variant: "secondary", locale }
+        ]}
+        riskNote={t("hero.risk")}
+      />
 
       <InsightsExplorer posts={previews} />
     </div>

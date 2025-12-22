@@ -180,16 +180,21 @@
   },
   "matrix": {
     "eyebrow": "Content",
-    "title": "Insights that serve training: articles × video × programs",
+    "title": "Insights that serve training: articles × videos × courses",
     "lead": "Each piece supports the path: a framework, an action, and criteria for falsification.",
     "tabs": {
       "articles": "Articles",
       "videos": "Video",
-      "courses": "Programs"
+      "courses": "Courses"
     },
+    "lessonsShort": " lessons",
+    "hoursShort": "h",
+    "courseYouGet": "You will get",
+    "courseAccess": "Access",
+    "courseCta": "View course",
     "ctaAllArticles": "All articles",
     "ctaAllVideos": "All videos",
-    "ctaAllCourses": "All programs"
+    "ctaAllCourses": "All courses"
   },
   "tools": {
     "eyebrow": "Tools",
@@ -274,10 +279,21 @@
     "eyebrow": "About FxLocus",
     "title": "A training system, not a signal feed",
     "lead": "Built around Mind, Market, and Price Action—so execution becomes auditable and repeatable.",
+    "videoDisclaimer": "Disclaimer: This content is for education and training only. Not investment advice and no performance promises.",
     "body": {
       "p1": "FxLocus is built for real traders across FX, Gold, Indices, and Crypto.",
       "p2": "No signals. No performance promises. Just a structured path you can train and review.",
       "p3": "Use the framework, templates, and tools to turn decisions into a record."
+    },
+    "blocks": {
+      "philosophyTitle": "Philosophy",
+      "methodTitle": "Method",
+      "loopTitle": "Training loop",
+      "loopItems": [
+        "Write context and falsification before you act.",
+        "Execute within a clear risk boundary and log decisions.",
+        "Review behavior with evidence, then iterate one variable."
+      ]
     }
   },
   "realPath": {

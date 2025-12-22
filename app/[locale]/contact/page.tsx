@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { PageHero } from "@/components/marketing/PageHero";
 import { ContactForm } from "@/components/contact/ContactForm";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/lib/mock/types";
@@ -22,16 +23,21 @@ export default async function ContactPage({ params }: Props) {
   const t = await getTranslations({ locale, namespace: "contact" });
   const tCommon = await getTranslations({ locale, namespace: "common" });
   const tRisk = await getTranslations({ locale, namespace: "risk" });
+  const highlights = t.raw("hero.highlights") as string[];
 
   return (
     <div className="space-y-14 md:space-y-20">
-      <header className="pt-6">
-        <span className="fx-eyebrow">{tCommon(locale === "en" ? "brandEn" : "brandCn")}</span>
-        <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-50 md:text-5xl">
-          {t("title")}
-        </h1>
-        <p className="fx-lead">{t("lead")}</p>
-      </header>
+      <PageHero
+        eyebrow={tCommon(locale === "en" ? "brandEn" : "brandCn")}
+        title={t("hero.title")}
+        subtitle={t("hero.subtitle")}
+        highlights={highlights}
+        ctas={[
+          { href: "#form", label: t("hero.cta.primary"), variant: "primary", locale },
+          { href: "/framework", label: t("hero.cta.secondary"), variant: "secondary", locale }
+        ]}
+        riskNote={t("hero.risk")}
+      />
 
       <section className="fx-section">
         <span className="fx-eyebrow">{t("title")}</span>
@@ -47,7 +53,7 @@ export default async function ContactPage({ params }: Props) {
         </div>
       </section>
 
-      <section className="fx-section">
+      <section id="form" className="fx-section scroll-mt-24">
         <span className="fx-eyebrow">{tCommon("cta.submit")}</span>
         <h2 className="fx-h2">{t("title")}</h2>
         <p className="fx-lead">{t("lead")}</p>

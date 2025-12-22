@@ -7,6 +7,7 @@
   "volume": "Volume",
   "speed": "Speed",
   "quality": "Quality",
-  "fullscreen": "Fullscreen"
+  "fullscreen": "Fullscreen",
+  "defaultMute": "Default mute"
 }
 

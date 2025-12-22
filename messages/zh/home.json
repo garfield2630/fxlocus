@@ -187,6 +187,11 @@
       "videos": "视频",
       "courses": "课程"
     },
+    "lessonsShort": "节",
+    "hoursShort": "小时",
+    "courseYouGet": "你将获得",
+    "courseAccess": "访问权限",
+    "courseCta": "进入课程",
     "ctaAllArticles": "查看全部文章",
     "ctaAllVideos": "查看全部视频",
     "ctaAllCourses": "查看全部课程"
@@ -274,10 +279,21 @@
     "eyebrow": "了解我们",
     "title": "训练系统，而不是信号堆砌",
     "lead": "围绕交易心理、市场认知与K线本质，让执行变得可审计、可复用。",
+    "videoDisclaimer": "免责声明：仅用于教育与训练，不构成投资建议；不承诺收益，交易有风险。",
     "body": {
       "p1": "FxLocus 面向真实交易者：外汇、黄金、指数与加密，统一用同一套框架训练。",
       "p2": "不卖信号、不承诺收益。我们只要求过程可记录、可复盘、可迭代。",
       "p3": "用体系、模板与工具，把每一次决策变成证据链。"
+    },
+    "blocks": {
+      "philosophyTitle": "理念",
+      "methodTitle": "方法",
+      "loopTitle": "训练闭环",
+      "loopItems": [
+        "先写上下文与证伪点，再谈入场与管理。",
+        "按风险边界执行并记录每一次决策。",
+        "用复盘审计行为，只改一个变量再迭代。"
+      ]
     }
   },
   "realPath": {

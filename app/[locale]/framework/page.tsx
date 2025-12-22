@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { PageHero } from "@/components/marketing/PageHero";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
@@ -40,26 +41,23 @@ export default async function FrameworkPage({ params }: Props) {
   const locale = params.locale;
   const t = await getTranslations({ locale, namespace: "framework" });
   const tCommon = await getTranslations({ locale, namespace: "common" });
+  const highlights = t.raw("hero.highlights") as string[];
 
   const grouped = groupByPillar(frameworkModules);
 
   return (
     <div className="space-y-14 md:space-y-20">
-      <header className="pt-6">
-        <span className="fx-eyebrow">{tCommon(locale === "en" ? "brandEn" : "brandCn")}</span>
-        <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-50 md:text-5xl">
-          {t("title")}
-        </h1>
-        <p className="fx-lead">{t("lead")}</p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <ButtonLink href="/programs" locale={locale} variant="primary">
-            {t("cta.toPrograms")}
-          </ButtonLink>
-          <ButtonLink href="/contact" locale={locale} variant="secondary">
-            {t("cta.bookCall")}
-          </ButtonLink>
-        </div>
-      </header>
+      <PageHero
+        eyebrow={tCommon(locale === "en" ? "brandEn" : "brandCn")}
+        title={t("hero.title")}
+        subtitle={t("hero.subtitle")}
+        highlights={highlights}
+        ctas={[
+          { href: "/programs", label: t("hero.cta.primary"), variant: "primary", locale },
+          { href: "/contact", label: t("hero.cta.secondary"), variant: "secondary", locale }
+        ]}
+        riskNote={t("hero.risk")}
+      />
 
       {(
         [

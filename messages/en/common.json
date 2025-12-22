@@ -16,10 +16,20 @@
     "market": "Market",
     "price": "Price Action"
   },
+  "form": {
+    "country": "Country/Region",
+    "phone": "Phone number",
+    "placeholders": {
+      "phone": "Type your number…"
+    }
+  },
   "ui": {
     "menu": "Menu",
     "close": "Close",
     "nav": "Navigation",
+    "copied": "Copied",
+    "searchCountry": "Search country…",
+    "noResults": "No results",
     "capabilities": "Capabilities",
     "step": "Step",
     "metric": "Metric",
