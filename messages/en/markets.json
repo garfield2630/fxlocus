@@ -30,5 +30,158 @@
       "paper": "Paper trading panel (placeholder)",
       "risk": "Risk controls & journal (placeholder)"
     }
+  },
+  "terminal": {
+    "title": "Markets Terminal",
+    "tagline": "Training only. Cognition and execution before tactics (not investment advice).",
+    "left": {
+      "expand": "Expand instruments",
+      "collapse": "Collapse instruments",
+      "handle": "Resize instruments panel",
+      "edge": "Expand instruments panel"
+    },
+    "right": {
+      "expand": "Expand trading",
+      "collapse": "Collapse trading",
+      "handle": "Resize trading panel",
+      "edge": "Expand trading panel"
+    }
+  },
+  "workspace": {
+    "tabs": {
+      "depth": "Depth",
+      "stats": "Stats",
+      "ai": "AI lens",
+      "news": "News"
+    },
+    "stats": {
+      "placeholder": "Daily stats will appear here (high/low/volume)."
+    },
+    "search": {
+      "label": "Search",
+      "placeholder": "Symbol or name (EUR/USD, EURUSD, Euro Dollar)"
+    },
+    "categories": {
+      "title": "Categories",
+      "toggle": "Toggle category",
+      "fx_direct": "FX Majors",
+      "fx_cross": "FX Crosses",
+      "metals": "Gold / Silver",
+      "crypto": "Crypto",
+      "indices": "Indices",
+      "commodities": "Commodities"
+    },
+    "watchlist": {
+      "title": "Watchlist",
+      "empty": "No favorites yet.",
+      "hint": "Star instruments to pin them here."
+    },
+    "list": {
+      "title": "Instrument list",
+      "empty": "No instruments match the current filter.",
+      "labels": {
+        "high": "High",
+        "low": "Low",
+        "bid": "Bid",
+        "ask": "Ask"
+      }
+    },
+    "actions": {
+      "watchlist": "Toggle watchlist",
+      "chart": "View chart",
+      "trade": "Focus paper trading"
+    },
+    "controls": {
+      "refresh": "Refresh",
+      "paused": "Paused",
+      "live": "Live",
+      "rateLimited": "Rate limited. Switched to 5s refresh."
+    },
+    "chart": {
+      "title": "Chart",
+      "doubleClick": "Double-click chart to maximize",
+      "fullscreenHint": "Double-click or ESC to exit",
+      "snapshotHint": "Use the TradingView toolbar for screenshots. One-click export comes later.",
+      "unavailable": "Chart unavailable for this instrument."
+    },
+    "depth": {
+      "title": "Depth & Lens",
+      "tabs": {
+        "depth": "Depth",
+        "ai": "FxLocus Lens",
+        "news": "Related news"
+      },
+      "bid": "Bid",
+      "ask": "Ask",
+      "volume": "Volume",
+      "updated": "Updated",
+      "simulated": "Simulated depth",
+      "source": {
+        "binance": "Binance depth",
+        "synthetic": "Simulated depth"
+      }
+    },
+    "ai": {
+      "title": "FxLocus Lens",
+      "loading": "Generating lens...",
+      "cognition": "Cognition",
+      "execution": "Execution",
+      "tactics": "Tactics"
+    },
+    "news": {
+      "title": "Related news",
+      "placeholder": [
+        "Macro headlines mapped to structure.",
+        "Phase 3 AI feed will replace this panel.",
+        "Optional TradingView Top Stories widget below."
+      ],
+      "disclaimer": "News is for training and information only; not investment advice."
+    },
+    "paper": {
+      "title": "Paper trading",
+      "balance": "Balance",
+      "side": {
+        "buy": "Buy",
+        "sell": "Sell"
+      },
+      "typeLabel": "Order type",
+      "type": {
+        "market": "Market",
+        "limit": "Limit",
+        "stop": "Stop"
+      },
+      "qty": "Quantity",
+      "limitPrice": "Limit price",
+      "stopPrice": "Stop price",
+      "place": "Place order",
+      "latest": "Last price",
+      "positions": "Positions",
+      "openOrders": "Open orders",
+      "history": "Order history",
+      "empty": "No orders yet.",
+      "loginHint": "Synced with Supabase.",
+      "demoHint": "Demo mode uses local storage; connect Supabase to persist.",
+      "mode": {
+        "synced": "Synced",
+        "demo": "Demo"
+      },
+      "error": {
+        "price": "Latest price not available.",
+        "qty": "Enter a valid quantity.",
+        "limit": "Limit price required.",
+        "stop": "Stop price required.",
+        "balance": "Insufficient balance."
+      },
+      "risk": "Educational use only. Not investment advice; trading involves risk."
+    },
+    "hotkeys": {
+      "title": "Hotkeys",
+      "space": "Space: pause/resume refresh",
+      "doubleClick": "Double-click chart: full screen",
+      "esc": "ESC: exit full screen"
+    },
+    "status": {
+      "loading": "Loading market workspace..."
+    }
   }
 }
