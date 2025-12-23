@@ -1,8 +1,4 @@
 {
   "crons": [
-    {
-      "path": "/api/cron/news-ingest?secret=REPLACE_WITH_NEWS_CRON_SECRET",
-      "schedule": "*/3 * * * *"
-    }
   ]
 }
