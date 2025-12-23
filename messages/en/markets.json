@@ -38,16 +38,25 @@
       "expand": "Expand instruments",
       "collapse": "Collapse instruments",
       "handle": "Resize instruments panel",
-      "edge": "Expand instruments panel"
+      "edge": "Expand instruments panel",
+      "rail": "Instruments",
+      "railHint": "Expand instruments panel"
     },
     "right": {
-      "expand": "Expand trading",
-      "collapse": "Collapse trading",
-      "handle": "Resize trading panel",
-      "edge": "Expand trading panel"
+      "expand": "Expand panel",
+      "collapse": "Collapse panel",
+      "handle": "Resize panel",
+      "edge": "Expand panel"
+    },
+    "fullscreen": {
+      "enter": "Full screen",
+      "exit": "Exit full screen",
+      "enterHint": "Full screen (ESC to exit)",
+      "exitHint": "Exit full screen (ESC)"
     }
   },
   "workspace": {
+    "disclaimer": "Some data is synthetic or estimated for training and will be labeled. Not investment advice.",
     "tabs": {
       "depth": "Depth",
       "stats": "Stats",
@@ -55,6 +64,23 @@
       "news": "News"
     },
     "stats": {
+      "title": "Session stats",
+      "last": "Last",
+      "change": "Change",
+      "high": "High",
+      "low": "Low",
+      "open": "Open",
+      "prevClose": "Prev close",
+      "bid": "Bid",
+      "ask": "Ask",
+      "spread": "Spread",
+      "updated": "Updated",
+      "loading": "Loading quote...",
+      "na": "N/A",
+      "demo": "Demo data",
+      "source": "Live feed",
+      "volume": "Volume",
+      "unavailable": "Stats will appear when the data source is connected.",
       "placeholder": "Daily stats will appear here (high/low/volume)."
     },
     "search": {
@@ -63,6 +89,7 @@
     },
     "categories": {
       "title": "Categories",
+      "all": "All",
       "toggle": "Toggle category",
       "fx_direct": "FX Majors",
       "fx_cross": "FX Crosses",
@@ -88,6 +115,8 @@
     },
     "actions": {
       "watchlist": "Toggle watchlist",
+      "watch": "Watch",
+      "unwatch": "Remove",
       "chart": "View chart",
       "trade": "Focus paper trading"
     },
@@ -113,8 +142,11 @@
       },
       "bid": "Bid",
       "ask": "Ask",
+      "spread": "Spread",
       "volume": "Volume",
       "updated": "Updated",
+      "loading": "Loading depth...",
+      "unavailable": "Depth unavailable for this instrument.",
       "simulated": "Simulated depth",
       "source": {
         "binance": "Binance depth",
@@ -124,12 +156,32 @@
     "ai": {
       "title": "FxLocus Lens",
       "loading": "Generating lens...",
+      "generate": "Generate AI lens",
+      "disabled": "AI not configured",
+      "missing": "OpenAI key not configured.",
+      "error": "AI summary unavailable.",
       "cognition": "Cognition",
       "execution": "Execution",
-      "tactics": "Tactics"
+      "tactics": "Tactics",
+      "rangeLabel": "Range",
+      "changeLabel": "Change",
+      "executionRule": "Stay within a defined risk boundary; position size before entry.",
+      "invalidationLabel": "Falsification level",
+      "checklistHint": "Confirm the execution checklist before entry.",
+      "tacticsFirst": "Wait for structure confirmation before adding risk.",
+      "tacticsSecond": "Avoid chasing; review the plan after the session.",
+      "trend": {
+        "up": "Trend: upward momentum with strength.",
+        "down": "Trend: downward pressure with follow-through.",
+        "range": "Trend: range or neutral structure."
+      }
     },
     "news": {
       "title": "Related news",
+      "loading": "Loading related news...",
+      "error": "Unable to load related news.",
+      "empty": "No related news yet.",
+      "cta": "Open the news desk",
       "placeholder": [
         "Macro headlines mapped to structure.",
         "Phase 3 AI feed will replace this panel.",
@@ -183,5 +235,32 @@
     "status": {
       "loading": "Loading market workspace..."
     }
+  },
+  "execution": {
+    "title": "Execution panel",
+    "tagline": "Training flow: cognition and execution before tactics.",
+    "currentLabel": "Current symbol:",
+    "symbolFallback": "-",
+    "checklist": {
+      "title": "Execution checklist",
+      "context": "Narrative/phase is identified",
+      "keyLevel": "Key levels are marked",
+      "invalidation": "Falsification point is defined",
+      "size": "Position size and risk boundary set",
+      "emotions": "Emotions steady (no chase/revenge)"
+    },
+    "invalidation": {
+      "title": "Falsification",
+      "placeholder": "Example: breaks 1.0720 and closes below"
+    },
+    "risk": {
+      "title": "Risk boundary",
+      "default": "Risk per trade capped at 0.5% - 1% of account"
+    },
+    "note": {
+      "title": "Quick notes",
+      "placeholder": "Context, key levels, execution plan, risk, review points..."
+    },
+    "cta": "Open trade system (journal/review/courses)"
   }
 }

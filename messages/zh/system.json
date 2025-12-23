@@ -10,18 +10,18 @@
   "featureDesc": {
     "log": "记录进出场、理由、风险与证据链。",
     "review": "周复盘模板与错误分类，形成可迭代输出。",
-    "score": "用评分卡衡量一致性、风控与纪律。",
+    "score": "衡量一致性、风控与纪律。",
     "notes": "把市场认知写成结构化笔记与叙事。"
   },
   "auth": {
     "title": "登录与注册",
-    "lead": "登录后进入系统功能；如未配置环境变量，则以演示模式展示。",
+    "lead": "登录后进入系统功能；若未配置环境变量，则以演示模式展示。",
     "signIn": "登录",
     "signUp": "注册",
-    "hint": "如未配置系统环境变量，将显示演示模式。",
-    "registerHintTitle": "????",
-    "registerHintBody": "??????",
-    "registerHintAction": "????"
+    "hint": "若未配置系统环境变量，将显示演示模式。",
+    "registerHintTitle": "注册提示",
+    "registerHintBody": "请联系团队长",
+    "registerHintAction": "我知道了"
   },
   "mockAuth": {
     "title": "登录",
@@ -29,7 +29,7 @@
     "username": "账号",
     "password": "密码",
     "submit": "登录",
-    "submitting": "登录中…",
+    "submitting": "登录中...",
     "errorInvalid": "账号或密码错误。",
     "errorGeneric": "登录失败，请稍后重试。",
     "demo": {
@@ -69,22 +69,10 @@
         "title": "概览",
         "lead": "System Lite 以本地数据为主。本轮先交付系统壳子与路由守卫。",
         "cards": {
-          "status": {
-            "k": "状态",
-            "v": "演示模式"
-          },
-          "streak": {
-            "k": "连续亏损",
-            "v": "未配置"
-          },
-          "risk": {
-            "k": "当日风险",
-            "v": "未配置"
-          },
-          "next": {
-            "k": "下一步",
-            "v": "先打开执行闸门"
-          }
+          "status": { "k": "状态", "v": "演示模式" },
+          "streak": { "k": "连续亏损", "v": "未配置" },
+          "risk": { "k": "当日风险", "v": "未配置" },
+          "next": { "k": "下一步", "v": "先打开执行闸门" }
         }
       },
       "journal": {
