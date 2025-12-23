@@ -41,21 +41,11 @@ async function insertRecord(payload: Record<string, unknown>) {
     content
   };
 
-  const { data, error } = await supabase
-    .from("records")
-    .insert([baseInsert])
-    .select("id, created_at")
-    .maybeSingle();
+  const { error } = await supabase.from("records").insert([baseInsert]);
+  if (!error) return { error: null };
 
-  if (!error) return { data, error };
-
-  const fallback = await supabase
-    .from("records")
-    .insert([{ content }])
-    .select("id, created_at")
-    .maybeSingle();
-
-  return fallback;
+  const fallback = await supabase.from("records").insert([{ content }]);
+  return { error: fallback.error };
 }
 
 async function hasRecentSubmission(email: string) {
@@ -133,13 +123,13 @@ export async function POST(request: Request) {
       receivedAt: new Date().toISOString()
     };
 
-    const { data, error } = await insertRecord(payload);
+    const { error } = await insertRecord(payload);
     if (error) {
       console.error(error);
       return NextResponse.json({ error: "Service unavailable." }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, id: data?.id, createdAt: data?.created_at });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Service unavailable." }, { status: 500 });

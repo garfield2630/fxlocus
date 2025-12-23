@@ -13,21 +13,11 @@ async function insertRecord(payload: Record<string, unknown>) {
     content
   };
 
-  const { data, error } = await supabase
-    .from("records")
-    .insert([baseInsert])
-    .select("id, created_at")
-    .maybeSingle();
+  const { error } = await supabase.from("records").insert([baseInsert]);
+  if (!error) return { error: null };
 
-  if (!error) return { data, error };
-
-  const fallback = await supabase
-    .from("records")
-    .insert([{ content }])
-    .select("id, created_at")
-    .maybeSingle();
-
-  return fallback;
+  const fallback = await supabase.from("records").insert([{ content }]);
+  return { error: fallback.error };
 }
 
 export async function POST(request: Request) {
