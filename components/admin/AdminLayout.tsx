@@ -139,7 +139,7 @@ function DashboardCard(props: { title: string; value: string; trend: string }) {
   );
 }
 
-// 2. 在训学员管理（使用本地存储模拟数据源 + 编辑交易弹窗）
+// 2. 在训学员管理（基于 Supabase records 数据源 + 编辑交易弹窗）
 function StudentsPage() {
   const { students, addStudent, dismissStudent } = useStudentData();
   const { getLatestForStudent, getAllForStudent, addRecord } = useTradeRecords();
@@ -179,7 +179,7 @@ function StudentsPage() {
       alert("请填写学员名称和培训起始日期");
       return;
     }
-    addStudent({
+    void addStudent({
       name: formName,
       trainingStartDate: formDate,
       gender: formGender as any,
@@ -195,7 +195,7 @@ function StudentsPage() {
   function handleDismiss(id: string) {
     const reason = window.prompt("请输入劝退原因：", "长期不参与训练");
     if (!reason) return;
-    dismissStudent(id, reason);
+    void dismissStudent(id, reason);
   }
 
   function openEditTrade(id: string) {
@@ -224,7 +224,7 @@ function StudentsPage() {
       alert("请至少填写阶段起始、当前阶段和交易结果");
       return;
     }
-    addRecord({
+    void addRecord({
       studentId: editingId,
       stageStartDate,
       currentStage,
@@ -240,7 +240,7 @@ function StudentsPage() {
     <div className="admin-page">
       <header className="admin-page-header">
         <h1>在训学员管理</h1>
-        <p className="admin-page-sub">管理学员基础信息与训练阶段记录（当前为原型功能，数据保存在浏览器本地）。</p>
+        <p className="admin-page-sub">管理学员基础信息与训练阶段记录（当前为原型功能，数据来自 Supabase）。</p>
       </header>
 
       <section className="admin-filter-row">
@@ -538,7 +538,7 @@ function TradersPage() {
       alert("请选择一名学员作为交易员来源");
       return;
     }
-    addTrader({
+    void addTrader({
       studentId: base.id,
       name: base.name,
       gender: base.gender,
@@ -730,7 +730,7 @@ function DismissedPage() {
     <div className="admin-page">
       <header className="admin-page-header">
         <h1>劝退学员管理</h1>
-        <p className="admin-page-sub">已劝退学员的回收站，可恢复或永久删除。当前数据保存在浏览器本地。</p>
+        <p className="admin-page-sub">已劝退学员的回收站，可恢复或永久删除。当前数据来自 Supabase。</p>
       </header>
 
       <div className="admin-actions-row">
@@ -738,7 +738,7 @@ function DismissedPage() {
           className="btn btn-outline"
           disabled={selected.length === 0}
           onClick={() => {
-            batchRestore(selected);
+            void batchRestore(selected);
             setSelected([]);
           }}
         >
@@ -750,7 +750,7 @@ function DismissedPage() {
           disabled={selected.length === 0}
           onClick={() => {
             if (!window.confirm("确定要永久删除选中的学员吗？该操作不可恢复。")) return;
-            batchDelete(selected);
+            void batchDelete(selected);
             setSelected([]);
           }}
         >
@@ -801,17 +801,17 @@ function DismissedPage() {
                     <button
                       className="btn btn-outline"
                       style={{ paddingInline: 10, fontSize: 12 }}
-                      onClick={() => restoreStudent(s.id)}
+                        onClick={() => void restoreStudent(s.id)}
                     >
                       恢复
                     </button>
                     <button
                       className="btn btn-primary"
                       style={{ paddingInline: 10, fontSize: 12, marginLeft: 8 }}
-                      onClick={() => {
-                        if (!window.confirm("确定要永久删除该学员吗？")) return;
-                        deleteDismissed(s.id);
-                      }}
+                        onClick={() => {
+                          if (!window.confirm("确定要永久删除该学员吗？")) return;
+                          void deleteDismissed(s.id);
+                        }}
                     >
                       永久删除
                     </button>

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
+import { createSupabaseClient } from "@/lib/supabase";
 
 export type Gender = "male" | "female" | "unknown";
 
@@ -8,9 +9,9 @@ export interface Student {
   id: string;
   name: string;
   gender: Gender;
-  trainingStartDate: string; // ISO yyyy-MM-dd
-   level?: string;
-  birthday?: string; // ISO yyyy-MM-dd
+  trainingStartDate: string; // yyyy-MM-dd
+  level?: string;
+  birthday?: string; // yyyy-MM-dd
   currentStage?: string;
 }
 
@@ -19,32 +20,59 @@ export interface DismissedStudent extends Student {
   reason: string;
 }
 
-const STORAGE_KEY_STUDENTS = "fxlocus_admin_students_v1";
-const STORAGE_KEY_DISMISSED = "fxlocus_admin_dismissed_v1";
+const STUDENT_TYPE = "admin_student";
+const DISMISSED_TYPE = "admin_student_dismissed";
 
-function safeParse<T>(raw: string | null, fallback: T): T {
-  if (!raw) return fallback;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
+type RecordRow = {
+  id: string;
+  type: string | null;
+  payload: Record<string, unknown> | null;
+  content: string | null;
+  created_at: string | null;
+};
+
+function parsePayload(row: RecordRow): Record<string, unknown> {
+  if (row.payload && typeof row.payload === "object") return row.payload;
+  if (row.content) {
+    try {
+      const parsed = JSON.parse(row.content) as Record<string, unknown>;
+      if (parsed && typeof parsed === "object") return parsed;
+    } catch {
+      return {};
+    }
   }
+  return {};
 }
 
-function dedupeById<T extends { id: string }>(list: T[]): T[] {
-  const map = new Map<string, T>();
-  for (const item of list) {
-    map.set(item.id, item);
-  }
-  return Array.from(map.values());
+function normalizeGender(value: unknown): Gender {
+  if (value === "male" || value === "female" || value === "unknown") return value;
+  return "unknown";
 }
 
-function saveToStorage(students: Student[], dismissed: DismissedStudent[]) {
-  if (typeof window === "undefined") return;
-  const safeStudents = dedupeById(students);
-  const safeDismissed = dedupeById(dismissed);
-  window.localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(safeStudents));
-  window.localStorage.setItem(STORAGE_KEY_DISMISSED, JSON.stringify(safeDismissed));
+function toStudent(row: RecordRow): Student {
+  const payload = parsePayload(row);
+  return {
+    id: row.id,
+    name: typeof payload.name === "string" ? payload.name : "",
+    gender: normalizeGender(payload.gender),
+    trainingStartDate:
+      typeof payload.trainingStartDate === "string" ? payload.trainingStartDate : "",
+    level: typeof payload.level === "string" ? payload.level : undefined,
+    birthday: typeof payload.birthday === "string" ? payload.birthday : undefined,
+    currentStage: typeof payload.currentStage === "string" ? payload.currentStage : undefined
+  };
+}
+
+function toDismissed(row: RecordRow): DismissedStudent {
+  const payload = parsePayload(row);
+  return {
+    ...toStudent(row),
+    dismissedAt:
+      typeof payload.dismissedAt === "string"
+        ? payload.dismissedAt
+        : row.created_at || new Date().toISOString(),
+    reason: typeof payload.reason === "string" ? payload.reason : ""
+  };
 }
 
 export function useStudentData() {
@@ -53,68 +81,166 @@ export function useStudentData() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const s = dedupeById(
-      safeParse<Student[]>(localStorage.getItem(STORAGE_KEY_STUDENTS), [])
-    );
-    const d = dedupeById(
-      safeParse<DismissedStudent[]>(localStorage.getItem(STORAGE_KEY_DISMISSED), [])
-    );
-    setStudents(s);
-    setDismissed(d);
-    setLoaded(true);
+    let alive = true;
+    const supabase = createSupabaseClient();
+
+    const load = async () => {
+      try {
+        const [studentsRes, dismissedRes] = await Promise.all([
+          supabase
+            .from("records")
+            .select("id,type,payload,content,created_at")
+            .eq("type", STUDENT_TYPE)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("records")
+            .select("id,type,payload,content,created_at")
+            .eq("type", DISMISSED_TYPE)
+            .order("created_at", { ascending: false })
+        ]);
+
+        if (!alive) return;
+
+        if (!studentsRes.error) {
+          setStudents((studentsRes.data || []).map(toStudent));
+        }
+        if (!dismissedRes.error) {
+          setDismissed((dismissedRes.data || []).map(toDismissed));
+        }
+      } finally {
+        if (alive) setLoaded(true);
+      }
+    };
+
+    void load();
+    return () => {
+      alive = false;
+    };
   }, []);
 
-  useEffect(() => {
-    if (!loaded) return;
-    saveToStorage(students, dismissed);
-  }, [students, dismissed, loaded]);
+  async function addStudent(payload: Omit<Student, "id">) {
+    const supabase = createSupabaseClient();
+    const recordPayload = {
+      ...payload,
+      updatedAt: new Date().toISOString()
+    };
 
-  function addStudent(payload: Omit<Student, "id">) {
-    const id = Date.now().toString();
-    setStudents((prev) => [{ id, ...payload }, ...prev]);
+    const { data, error } = await supabase
+      .from("records")
+      .insert([
+        {
+          type: STUDENT_TYPE,
+          payload: recordPayload,
+          content: JSON.stringify(recordPayload)
+        }
+      ])
+      .select("id,type,payload,content,created_at")
+      .maybeSingle();
+
+    if (!error && data) {
+      setStudents((prev) => [toStudent(data), ...prev]);
+    }
   }
 
-  function updateStudent(id: string, patch: Partial<Student>) {
-    setStudents((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  async function updateStudent(id: string, patch: Partial<Student>) {
+    const current = students.find((s) => s.id === id);
+    if (!current) return;
+
+    const nextPayload = {
+      ...current,
+      ...patch,
+      updatedAt: new Date().toISOString()
+    };
+
+    const supabase = createSupabaseClient();
+    const { data, error } = await supabase
+      .from("records")
+      .update({
+        payload: nextPayload,
+        content: JSON.stringify(nextPayload)
+      })
+      .eq("id", id)
+      .select("id,type,payload,content,created_at")
+      .maybeSingle();
+
+    if (!error && data) {
+      setStudents((prev) => prev.map((s) => (s.id === id ? toStudent(data) : s)));
+    }
   }
 
-  function dismissStudent(id: string, reason: string) {
-    setStudents((prev) => {
-      const target = prev.find((s) => s.id === id);
-      const rest = prev.filter((s) => s.id !== id);
-      if (!target) return prev;
-      const record: DismissedStudent = {
-        ...target,
-        dismissedAt: new Date().toISOString(),
-        reason
-      };
-      setDismissed((d) => [record, ...d]);
-      return rest;
-    });
+  async function dismissStudent(id: string, reason: string) {
+    const target = students.find((s) => s.id === id);
+    if (!target) return;
+
+    const recordPayload = {
+      ...target,
+      dismissedAt: new Date().toISOString(),
+      reason,
+      updatedAt: new Date().toISOString()
+    };
+
+    const supabase = createSupabaseClient();
+    const { data, error } = await supabase
+      .from("records")
+      .update({
+        type: DISMISSED_TYPE,
+        payload: recordPayload,
+        content: JSON.stringify(recordPayload)
+      })
+      .eq("id", id)
+      .select("id,type,payload,content,created_at")
+      .maybeSingle();
+
+    if (!error && data) {
+      setStudents((prev) => prev.filter((s) => s.id !== id));
+      setDismissed((prev) => [toDismissed(data), ...prev]);
+    }
   }
 
-  function restoreStudent(id: string) {
-    setDismissed((prev) => {
-      const target = prev.find((s) => s.id === id);
-      const rest = prev.filter((s) => s.id !== id);
-      if (!target) return prev;
-      const { dismissedAt, reason, ...student } = target;
-      setStudents((s) => [student, ...s]);
-      return rest;
-    });
+  async function restoreStudent(id: string) {
+    const target = dismissed.find((s) => s.id === id);
+    if (!target) return;
+
+    const { dismissedAt, reason, ...student } = target;
+    const recordPayload = {
+      ...student,
+      updatedAt: new Date().toISOString()
+    };
+
+    const supabase = createSupabaseClient();
+    const { data, error } = await supabase
+      .from("records")
+      .update({
+        type: STUDENT_TYPE,
+        payload: recordPayload,
+        content: JSON.stringify(recordPayload)
+      })
+      .eq("id", id)
+      .select("id,type,payload,content,created_at")
+      .maybeSingle();
+
+    if (!error && data) {
+      setDismissed((prev) => prev.filter((s) => s.id !== id));
+      setStudents((prev) => [toStudent(data), ...prev]);
+    }
   }
 
-  function deleteDismissed(id: string) {
-    setDismissed((prev) => prev.filter((s) => s.id !== id));
+  async function deleteDismissed(id: string) {
+    const supabase = createSupabaseClient();
+    const { error } = await supabase.from("records").delete().eq("id", id);
+    if (!error) {
+      setDismissed((prev) => prev.filter((s) => s.id !== id));
+    }
   }
 
-  function batchRestore(ids: string[]) {
-    Array.from(new Set(ids)).forEach((id) => restoreStudent(id));
+  async function batchRestore(ids: string[]) {
+    const unique = Array.from(new Set(ids));
+    await Promise.all(unique.map((id) => restoreStudent(id)));
   }
 
-  function batchDelete(ids: string[]) {
-    setDismissed((prev) => prev.filter((s) => !ids.includes(s.id)));
+  async function batchDelete(ids: string[]) {
+    const unique = Array.from(new Set(ids));
+    await Promise.all(unique.map((id) => deleteDismissed(id)));
   }
 
   return {

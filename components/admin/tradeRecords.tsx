@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
+import { createSupabaseClient } from "@/lib/supabase";
 
 export interface TradeRecord {
   id: string;
@@ -14,15 +15,48 @@ export interface TradeRecord {
   createdAt: string;
 }
 
-const STORAGE_KEY_TRADE = "fxlocus_admin_trade_records_v1";
+const TRADE_TYPE = "admin_trade_record";
 
-function safeParse<T>(raw: string | null, fallback: T): T {
-  if (!raw) return fallback;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
+type RecordRow = {
+  id: string;
+  type: string | null;
+  payload: Record<string, unknown> | null;
+  content: string | null;
+  created_at: string | null;
+};
+
+function parsePayload(row: RecordRow): Record<string, unknown> {
+  if (row.payload && typeof row.payload === "object") return row.payload;
+  if (row.content) {
+    try {
+      const parsed = JSON.parse(row.content) as Record<string, unknown>;
+      if (parsed && typeof parsed === "object") return parsed;
+    } catch {
+      return {};
+    }
   }
+  return {};
+}
+
+function toRecord(row: RecordRow): TradeRecord {
+  const payload = parsePayload(row);
+  return {
+    id: row.id,
+    studentId: typeof payload.studentId === "string" ? payload.studentId : "",
+    stageStartDate:
+      typeof payload.stageStartDate === "string" ? payload.stageStartDate : "",
+    currentStage: typeof payload.currentStage === "string" ? payload.currentStage : "",
+    tradeResult: typeof payload.tradeResult === "string" ? payload.tradeResult : "",
+    strategyImage:
+      typeof payload.strategyImage === "string" ? payload.strategyImage : undefined,
+    weeklySummaryImage:
+      typeof payload.weeklySummaryImage === "string" ? payload.weeklySummaryImage : undefined,
+    remark: typeof payload.remark === "string" ? payload.remark : undefined,
+    createdAt:
+      typeof payload.createdAt === "string"
+        ? payload.createdAt
+        : row.created_at || new Date().toISOString()
+  };
 }
 
 export function useTradeRecords() {
@@ -30,38 +64,52 @@ export function useTradeRecords() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const r = safeParse<TradeRecord[]>(localStorage.getItem(STORAGE_KEY_TRADE), []);
-    setRecords(r);
-    setLoaded(true);
+    let alive = true;
+    const supabase = createSupabaseClient();
+
+    const load = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("records")
+          .select("id,type,payload,content,created_at")
+          .eq("type", TRADE_TYPE)
+          .order("created_at", { ascending: false });
+
+        if (!alive) return;
+        if (!error) setRecords((data || []).map(toRecord));
+      } finally {
+        if (alive) setLoaded(true);
+      }
+    };
+
+    void load();
+    return () => {
+      alive = false;
+    };
   }, []);
 
-  useEffect(() => {
-    if (!loaded || typeof window === "undefined") return;
-    try {
-      // 为了防止图片的 base64 数据过大撑爆 localStorage，这里只持久化元数据，
-      // 图片字段在本地运行期保留，但不写入 localStorage。
-      const lightRecords = records.map((r) => ({
-        id: r.id,
-        studentId: r.studentId,
-        stageStartDate: r.stageStartDate,
-        currentStage: r.currentStage,
-        tradeResult: r.tradeResult,
-        remark: r.remark,
-        createdAt: r.createdAt
-      }));
-      window.localStorage.setItem(STORAGE_KEY_TRADE, JSON.stringify(lightRecords));
-    } catch (err) {
-      // 如果仍然超过配额，忽略错误，避免页面崩溃。
-      console.warn("保存交易记录到 localStorage 失败，已忽略：", err);
-    }
-  }, [records, loaded]);
+  async function addRecord(payload: Omit<TradeRecord, "id" | "createdAt">) {
+    const supabase = createSupabaseClient();
+    const recordPayload = {
+      ...payload,
+      createdAt: new Date().toISOString()
+    };
 
-  function addRecord(payload: Omit<TradeRecord, "id" | "createdAt">) {
-    const id = Date.now().toString();
-    const createdAt = new Date().toISOString();
-    const rec: TradeRecord = { id, createdAt, ...payload };
-    setRecords((prev) => [rec, ...prev]);
+    const { data, error } = await supabase
+      .from("records")
+      .insert([
+        {
+          type: TRADE_TYPE,
+          payload: recordPayload,
+          content: JSON.stringify(recordPayload)
+        }
+      ])
+      .select("id,type,payload,content,created_at")
+      .maybeSingle();
+
+    if (!error && data) {
+      setRecords((prev) => [toRecord(data), ...prev]);
+    }
   }
 
   function getLatestForStudent(studentId: string): TradeRecord | undefined {

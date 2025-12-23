@@ -34,24 +34,14 @@ type DonateApplication = {
   thoughtsHtml: string;
 };
 
-const STORAGE_KEY = "fxlocus_donate_applications";
-
-function safeParseJson<T>(value: string | null): T | null {
-  if (!value) return null;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return null;
-  }
-}
-
-function loadApplications(): DonateApplication[] {
-  const data = safeParseJson<DonateApplication[]>(localStorage.getItem(STORAGE_KEY));
-  return Array.isArray(data) ? data : [];
-}
-
-function saveApplications(next: DonateApplication[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+async function fetchApplications(email: string): Promise<DonateApplication[]> {
+  if (!email.trim()) return [];
+  const res = await fetch(`/api/donate?email=${encodeURIComponent(email.trim())}`, {
+    cache: "no-store"
+  });
+  if (!res.ok) return [];
+  const json = await res.json();
+  return Array.isArray(json.items) ? (json.items as DonateApplication[]) : [];
 }
 
 function downloadJson(filename: string, data: unknown) {
@@ -89,6 +79,7 @@ export function DonateClient() {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [website, setWebsite] = useState("");
   const [walletCopied, setWalletCopied] = useState(false);
+  const [lastEmail, setLastEmail] = useState("");
 
   const [form, setForm] = useState(() => ({
     name: "",
@@ -200,7 +191,7 @@ export function DonateClient() {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setGlobalError(null);
     setSubmitted(null);
 
@@ -211,28 +202,7 @@ export function DonateClient() {
 
     if (!validate()) return;
 
-    const existing = loadApplications();
-    const recent = existing
-      .filter((x) => x.email.toLowerCase() === form.email.trim().toLowerCase())
-      .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))[0];
-
-    if (recent) {
-      const ageMs = Date.now() - new Date(recent.createdAt).getTime();
-      if (ageMs < 5 * 60 * 1000) {
-        setGlobalError(t("validation.rateLimited"));
-        return;
-      }
-    }
-
-    const id = typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-    const createdAt = new Date().toISOString();
-
-    const record: DonateApplication = {
-      id,
-      createdAt,
+    const payload = {
       locale,
       name: form.name.trim(),
       email: form.email.trim(),
@@ -248,15 +218,42 @@ export function DonateClient() {
       challenge: form.challenge,
       thoughtsHtml: form.thoughtsHtml
     };
+    try {
+      const res = await fetch("/api/donate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        const code = json?.code;
+        if (code === "rate_limited") {
+          setGlobalError(t("validation.rateLimited"));
+        } else if (code === "invalid_email") {
+          setGlobalError(t("validation.invalidEmail"));
+        } else {
+          setGlobalError("Submission failed. Please try again.");
+        }
+        return;
+      }
 
-    const next = [record, ...existing];
-    saveApplications(next);
-
-    setSubmitted({ id, createdAt });
+      setLastEmail(payload.email);
+      setSubmitted({
+        id: String(json.id || ""),
+        createdAt: String(json.createdAt || new Date().toISOString())
+      });
+    } catch {
+      setGlobalError("Submission failed. Please try again.");
+    }
   };
 
-  const exportAll = () => {
-    const data = loadApplications();
+  const exportAll = async () => {
+    const email = (lastEmail || form.email).trim();
+    if (!email) {
+      setGlobalError("Please enter an email before export.");
+      return;
+    }
+    const data = await fetchApplications(email);
     downloadJson(`fxlocus-donate-applications-${new Date().toISOString().slice(0, 10)}.json`, data);
   };
 
@@ -386,7 +383,7 @@ export function DonateClient() {
                 className="mt-8 space-y-10"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  handleSubmit();
+                  void handleSubmit();
                 }}
               >
                 <div className="space-y-4">
