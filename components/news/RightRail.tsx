@@ -119,7 +119,7 @@ export function RightRail({ locale }: { locale: "zh" | "en" }) {
                   </div>
                 </div>
                 <div className="mt-1 text-xs text-white/50">
-                  {locale === "zh" ? "热度" : "Heat"}：{item.heat ?? item.views || 0}
+                  {locale === "zh" ? "热度" : "Heat"}：{item.heat ?? item.views ?? 0}
                 </div>
               </a>
             );
