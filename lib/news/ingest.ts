@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { analyzeWithAI } from "./ai";
 import { hashText } from "./dedupe";
 import { normalizeUrl, safeSlug } from "./normalize";
+import { extractSymbolsHeuristic } from "./symbols";
 
 const parser = new Parser({ timeout: 12_000 });
 
@@ -19,22 +20,17 @@ function cleanToText(html?: string) {
 
 function guessCategory(title: string) {
   const t = title.toLowerCase();
-  if (/(cpi|ppi|rate|central bank|fed|ecb|inflation|gdp|jobs|payroll|ism)/i.test(t))
+  if (/(cpi|ppi|rate|central bank|fed|ecb|inflation|gdp|payroll|ism)/i.test(t))
     return "macro";
-  if (/(bitcoin|btc|ethereum|crypto|solana|binance)/i.test(t)) return "crypto";
-  if (/(oil|wti|brent|gold|xau|silver|copper|commodity)/i.test(t)) return "commodities";
+  if (/(bitcoin|btc|ethereum|crypto|solana)/i.test(t)) return "crypto";
+  if (/(oil|wti|brent|gold|silver|copper|commodity|xau|xag)/i.test(t)) return "commodities";
   if (/(stock|equity|nasdaq|sp500|dow|earnings)/i.test(t)) return "stocks";
   return "fx";
 }
 
-function shouldAutoPublish(sourceName: string) {
-  return /(Federal Reserve|ECB|BLS|BOJ|BOE|SNB|PBOC|Eurostat|ONS)/i.test(sourceName);
-}
-
 export async function ensureSourcesSeeded() {
   const sb = supabaseAdmin();
-  const { data, error } = await sb.from("news_sources").select("id").limit(1);
-  if (error) return;
+  const { data } = await sb.from("news_sources").select("id").limit(1);
   if (data && data.length > 0) return;
   const { DEFAULT_SOURCES } = await import("./sources");
   await sb.from("news_sources").insert(DEFAULT_SOURCES);
@@ -46,7 +42,7 @@ export async function ingestOnce() {
 
   const { data: sources } = await sb.from("news_sources").select("*").eq("enabled", true);
   const enabled = sources || [];
-  const ingested = { raw: 0, articles: 0 };
+  const stats = { raw: 0, articles: 0, errors: 0 };
 
   for (const src of enabled) {
     if (src.type !== "rss") continue;
@@ -55,25 +51,25 @@ export async function ingestOnce() {
     try {
       feed = await parser.parseURL(src.url);
     } catch {
+      stats.errors += 1;
       continue;
     }
 
-    for (const item of (feed.items || []).slice(0, 30)) {
+    for (const item of (feed.items || []).slice(0, 40)) {
       const title = String(item.title || "").trim();
       const link = String(item.link || "").trim();
       if (!title || !link) continue;
 
       const normalized = normalizeUrl(link);
+      const rawHtml = (item as any).content || (item as any)["content:encoded"] || "";
+      const snippet = (item as any).contentSnippet || "";
+      const rawText = cleanToText(rawHtml) || cleanToText(snippet) || "";
       const publishedAt = (item as any).isoDate
         ? new Date((item as any).isoDate).toISOString()
-        : null;
-      const publishedAtValue = publishedAt || new Date().toISOString();
-      const rawHtml = (item as any).content || (item as any)["content:encoded"] || "";
-      const rawText =
-        cleanToText(rawHtml) || cleanToText((item as any).contentSnippet || "");
+        : new Date().toISOString();
 
-      const titleHash = hashText(title);
-      const contentHash = hashText(rawText);
+      const titleHash = hashText(title) || "";
+      const contentHash = hashText(rawText) || "";
 
       const up = await sb
         .from("news_raw")
@@ -91,17 +87,16 @@ export async function ingestOnce() {
             content_hash: contentHash
           },
           { onConflict: "normalized_url" }
-        )
-        .select("id,normalized_url");
+        );
 
       if (up.error) continue;
-      ingested.raw += 1;
+      stats.raw += 1;
 
-      const existing = await sb.from("news_articles").select("id").eq("url", link).maybeSingle();
-      if (existing.data?.id) continue;
+      const { data: existing } = await sb.from("news_articles").select("id").eq("url", link).limit(1);
+      if (existing && existing.length > 0) continue;
 
       const slugBase = safeSlug(`${src.name}-${title}`);
-      const slug = `${slugBase}-${titleHash?.slice(0, 8) || Date.now()}`;
+      const slug = `${slugBase}-${titleHash.slice(0, 8) || Date.now()}`;
 
       const policy = (src.content_policy || "excerpt_only") as
         | "full"
@@ -116,28 +111,55 @@ export async function ingestOnce() {
         url: link
       });
 
+      const rawSymbols =
+        ai?.symbols && ai.symbols.length > 0
+          ? ai.symbols
+          : extractSymbolsHeuristic(`${title}\n${rawText}`);
+      const symbols = Array.from(
+        new Set(
+          rawSymbols
+            .map((symbol: string) => symbol.replace(/[\/-]/g, "").toUpperCase().trim())
+            .filter(Boolean)
+        )
+      ).slice(0, 12);
+
       const category = ai?.category || guessCategory(title);
       const importance = ai?.importance || "medium";
       const sentiment = ai?.sentiment || "neutral";
-      const symbols = ai?.symbols || [];
+
+      let titleZh = ai?.title_zh || null;
+      let summaryZh = ai?.summary_zh || null;
+      let keyPointsZh = ai?.key_points_zh || [];
+      let lensZh = ai?.fxlocus_lens_zh || null;
+
+      const titleEn = title;
       const summaryEn = ai?.summary_en || title;
-      const summaryZh = ai?.summary_zh || ai?.title_zh || title;
-      const titleZh = ai?.title_zh || null;
       const keyPointsEn = ai?.key_points_en || [];
-      const keyPointsZh = ai?.key_points_zh || [];
-      const lensZh = ai?.fxlocus_lens_zh || null;
       const lensEn = ai?.fxlocus_lens_en || null;
 
-      let contentEn: string | null = null;
-      let contentZh: string | null = null;
+      const languageMode = (src.language_mode || "bilingual") as
+        | "bilingual"
+        | "en_only"
+        | "zh_only";
 
-      if (policy === "full") {
-        contentEn = rawText || null;
-      } else if (policy === "excerpt_only") {
-        contentEn = (rawText || "").slice(0, 800) || null;
+      if (languageMode === "en_only") {
+        titleZh = null;
+        summaryZh = null;
+        keyPointsZh = [];
+        lensZh = null;
       }
 
-      const status = shouldAutoPublish(src.name) ? "published" : "pending";
+      const contentEn =
+        policy === "metadata_only"
+          ? null
+          : rawText
+              ? rawText.slice(0, policy === "full" ? 5000 : 900)
+              : null;
+      const contentZh = null;
+
+      const autoPublish = src.auto_publish !== false;
+      const status = autoPublish ? "published" : "pending";
+      const langFallback = !titleZh || !summaryZh ? "zh_missing" : null;
 
       const ins = await sb
         .from("news_articles")
@@ -145,7 +167,7 @@ export async function ingestOnce() {
           source_id: src.id,
           slug,
           url: link,
-          title_en: title,
+          title_en: titleEn,
           title_zh: titleZh,
           summary_en: summaryEn,
           summary_zh: summaryZh,
@@ -153,7 +175,7 @@ export async function ingestOnce() {
           content_zh: contentZh,
           author: (item as any).creator || (item as any).author || null,
           cover_image_url: null,
-          published_at: publishedAtValue,
+          published_at: publishedAt,
           category,
           importance,
           sentiment,
@@ -162,19 +184,21 @@ export async function ingestOnce() {
           key_points_zh: keyPointsZh,
           fxlocus_lens_en: lensEn,
           fxlocus_lens_zh: lensZh,
-          status
+          status,
+          lang_fallback: langFallback
         })
-        .select("id");
+        .select("id")
+        .maybeSingle();
 
-      if (!ins.error && ins.data?.[0]?.id) {
+      if (!ins.error && ins.data?.id) {
         await sb.from("news_metrics").upsert(
-          { article_id: ins.data[0].id },
+          { article_id: ins.data.id },
           { onConflict: "article_id" }
         );
-        ingested.articles += 1;
+        stats.articles += 1;
       }
     }
   }
 
-  return ingested;
+  return stats;
 }

@@ -33,5 +33,5 @@ export function EconCalendarWidget({ locale }: { locale: "zh" | "en" }) {
     ref.current.appendChild(container);
   }, [locale]);
 
-  return <div ref={ref} />;
+  return <div ref={ref} className="max-w-full overflow-hidden" />;
 }

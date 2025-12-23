@@ -9,6 +9,7 @@ export type FeedItem = {
   publishedAt: string;
   category: string;
   summary?: string;
+  contentHtml?: string;
 };
 
 type Source = {
@@ -95,6 +96,11 @@ export async function fetchRssItems({ category, from, to, limit }: FetchOptions)
       const link = item.link?.trim() ?? "";
       const publishedAt =
         (item.isoDate || item.pubDate || item.published || item.updated) ?? "";
+      const contentHtml =
+        (item as any)["content:encoded"] ||
+        (item as any).content ||
+        (item as any).summary ||
+        "";
 
       if (!title || !link) continue;
 
@@ -113,7 +119,8 @@ export async function fetchRssItems({ category, from, to, limit }: FetchOptions)
         source: source.source,
         publishedAt: publishedDate ? publishedDate.toISOString() : publishedAt,
         category: source.category,
-        summary: item.contentSnippet?.trim() || item.summary?.trim() || undefined
+        summary: item.contentSnippet?.trim() || item.summary?.trim() || undefined,
+        contentHtml: typeof contentHtml === "string" ? contentHtml : undefined
       });
     }
   }

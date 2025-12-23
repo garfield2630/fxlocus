@@ -352,7 +352,7 @@ export function AdminReviewPanel({ locale }: { locale: "zh" | "en" }) {
         </div>
 
         {loading ? (
-          <div className="mt-3 text-sm text-white/60">{t("加载中…", "Loading…")}</div>
+          <div className="mt-3 text-sm text-white/60">{t("加载中…", "Loading...")}</div>
         ) : null}
 
         <div className="mt-4 space-y-3">
@@ -370,8 +370,8 @@ export function AdminReviewPanel({ locale }: { locale: "zh" | "en" }) {
                   <span>·</span>
                   <span>{item.published_at ? new Date(item.published_at).toLocaleString() : "-"}</span>
                   <span className="ml-auto">
-                    {t("浏览", "Views")}: {item.news_metrics?.views || 0} /{" "}
-                    {t("点击", "Clicks")}: {item.news_metrics?.clicks || 0}
+                    {t("浏览", "Views")}: {item.news_metrics?.views || 0} / {t("点击", "Clicks")}:
+                    {item.news_metrics?.clicks || 0}
                   </span>
                 </div>
 
@@ -474,10 +474,16 @@ export function AdminReviewPanel({ locale }: { locale: "zh" | "en" }) {
             <div className="rounded-2xl border border-white/10 bg-white/0 p-3 text-sm text-white/70">
               <div className="text-white/85 font-semibold">{t("全站汇总", "Totals")}</div>
               <div className="mt-2 space-y-1">
-                <div>{t("浏览", "Views")}: {Math.round(report.totals.views)}</div>
-                <div>{t("点击", "Clicks")}: {Math.round(report.totals.clicks)}</div>
+                <div>
+                  {t("浏览", "Views")}: {Math.round(report.totals.views)}
+                </div>
+                <div>
+                  {t("点击", "Clicks")}: {Math.round(report.totals.clicks)}
+                </div>
                 <div>CTR: {(report.totals.ctr * 100).toFixed(1)}%</div>
-                <div>{t("平均停留", "Avg dwell")}: {report.totals.avgDwell.toFixed(1)}s</div>
+                <div>
+                  {t("平均停留", "Avg dwell")}: {report.totals.avgDwell.toFixed(1)}s
+                </div>
               </div>
             </div>
 
@@ -487,7 +493,9 @@ export function AdminReviewPanel({ locale }: { locale: "zh" | "en" }) {
                 {report.topArticles.map((item, idx) => (
                   <div key={`${item.slug || idx}`} className="text-xs text-white/70">
                     <div className="line-clamp-1 text-white/85">{item.title}</div>
-                    <div>Views: {item.views} · CTR: {(item.ctr * 100).toFixed(1)}%</div>
+                    <div>
+                      Views: {item.views} · CTR: {(item.ctr * 100).toFixed(1)}%
+                    </div>
                   </div>
                 ))}
               </div>
@@ -499,7 +507,9 @@ export function AdminReviewPanel({ locale }: { locale: "zh" | "en" }) {
                 {report.categories.map((item) => (
                   <div key={item.category} className="text-xs text-white/70">
                     <div className="text-white/85">{item.category}</div>
-                    <div>Views: {item.views} · CTR: {(item.ctr * 100).toFixed(1)}%</div>
+                    <div>
+                      Views: {item.views} · CTR: {(item.ctr * 100).toFixed(1)}%
+                    </div>
                   </div>
                 ))}
               </div>

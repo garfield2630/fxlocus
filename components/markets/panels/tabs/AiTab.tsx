@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 
@@ -68,7 +68,7 @@ export function AiTab() {
         </div>
         <div className="mt-2 text-xs text-white/50">
           {locale === "zh"
-            ? "说明：本区来自 TradingView 技术分析组件（同一标的同一 feed）。"
+            ? "来源：TradingView 技术分析组件（同一标的同一 feed）。"
             : "Sourced from TradingView Technical Analysis widget (same symbol/feed)."}
         </div>
 
