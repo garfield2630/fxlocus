@@ -76,7 +76,7 @@ export function SiteHeader() {
       { key: "markets", href: "/markets" },
       { key: "news", href: "/news" },
       { key: "tools", href: "/tools" },
-      { key: "system", href: "/trade-system" },
+      { key: "system", href: "/system/login" },
       { key: "donate", href: "/donate" },
       { key: "about", href: "/about" },
       { key: "contact", href: "/contact" }

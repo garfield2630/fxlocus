@@ -33,8 +33,8 @@ export const DEFAULT_SOURCES: SourceDef[] = [
   {
     name: "DailyFX",
     type: "rss",
-    url: "https://example.com/dailyfx/rss",
-    enabled: false,
+    url: "https://www.dailyfx.com/feeds/market-news",
+    enabled: true,
     content_policy: "excerpt_only",
     auto_publish: true,
     language_mode: "bilingual"
@@ -42,26 +42,17 @@ export const DEFAULT_SOURCES: SourceDef[] = [
   {
     name: "Federal Reserve",
     type: "official",
-    url: "https://example.com/fed/press",
-    enabled: false,
+    url: "https://www.federalreserve.gov/feeds/press_all.xml",
+    enabled: true,
     content_policy: "metadata_only",
     auto_publish: true,
     language_mode: "en_only"
   },
   {
-    name: "European Central Bank",
+    name: "EIA (Energy Information Administration)",
     type: "official",
-    url: "https://example.com/ecb/press",
-    enabled: false,
-    content_policy: "metadata_only",
-    auto_publish: true,
-    language_mode: "en_only"
-  },
-  {
-    name: "BLS Releases",
-    type: "official",
-    url: "https://example.com/bls/releases",
-    enabled: false,
+    url: "https://www.eia.gov/rss/overview.xml",
+    enabled: true,
     content_policy: "metadata_only",
     auto_publish: true,
     language_mode: "en_only"

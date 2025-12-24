@@ -1,0 +1,68 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+import { getIpFromHeaders, getUserAgent, parseDevice } from "@/lib/system/requestMeta";
+import { getSystemAuth } from "@/lib/system/auth";
+import { hashPassword } from "@/lib/system/password";
+import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
+
+export const runtime = "nodejs";
+
+const Body = z.object({
+  newPassword: z.string().min(6).max(128).optional()
+});
+
+function noStoreJson(payload: unknown, status = 200) {
+  return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+function randomPassword() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$";
+  let out = "";
+  for (let i = 0; i < 12; i += 1) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+export async function POST(req: NextRequest, ctx: { params: { userId: string } }) {
+  const auth = await getSystemAuth();
+  if (!auth.ok) return noStoreJson({ ok: false, error: auth.reason }, 401);
+  if (auth.user.role !== "admin") return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
+
+  const userId = ctx.params.userId;
+  if (!userId) return noStoreJson({ ok: false, error: "INVALID_USER" }, 400);
+
+  const parsed = Body.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return noStoreJson({ ok: false, error: "INVALID_BODY" }, 400);
+
+  const nextPassword = parsed.data.newPassword || randomPassword();
+  const passwordHash = await hashPassword(nextPassword);
+  const admin = supabaseAdmin();
+  const now = new Date().toISOString();
+
+  const { error } = await admin
+    .from("system_users")
+    .update({ password_hash: passwordHash, must_change_password: true, updated_at: now })
+    .eq("id", userId);
+  if (error) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
+
+  await admin
+    .from("system_sessions")
+    .update({ revoked_at: now, revoke_reason: "password_reset" })
+    .eq("user_id", userId)
+    .is("revoked_at", null);
+
+  const ip = getIpFromHeaders(req.headers);
+  const ua = getUserAgent(req.headers);
+  const device = parseDevice(ua);
+  await admin.from("system_login_logs").insert({
+    user_id: userId,
+    event: "password_changed",
+    ip,
+    user_agent: ua,
+    device,
+    meta: { by: auth.user.id, admin_reset: true }
+  });
+
+  return noStoreJson({ ok: true, newPassword: nextPassword });
+}
+

@@ -12,6 +12,7 @@ const intlMiddleware = createMiddleware({
 });
 
 const SESSION_COOKIE_NAME = "fxlocus_session";
+const SYSTEM_COOKIE_NAME = "fxlocus_system_token";
 
 function base64UrlToBytes(input: string) {
   let base64 = input.replace(/-/g, "+").replace(/_/g, "/");
@@ -95,6 +96,23 @@ export default async function middleware(request: NextRequest) {
         url.pathname = `/${locale}/trade-system/login`;
         url.searchParams.set("next", pathname + request.nextUrl.search);
         return NextResponse.redirect(url);
+      }
+    }
+
+    if (rest === "/system" || rest.startsWith("/system/")) {
+      const isPublic =
+        rest === "/system/login" ||
+        rest === "/system/forgot-password" ||
+        rest === "/system/reset-password";
+
+      if (!isPublic) {
+        const token = request.cookies.get(SYSTEM_COOKIE_NAME)?.value;
+        if (!token) {
+          const url = request.nextUrl.clone();
+          url.pathname = `/${locale}/system/login`;
+          url.searchParams.set("next", pathname + request.nextUrl.search);
+          return NextResponse.redirect(url);
+        }
       }
     }
   }

@@ -45,7 +45,8 @@ export async function ingestOnce() {
   const stats = { raw: 0, articles: 0, errors: 0 };
 
   for (const src of enabled) {
-    if (src.type !== "rss") continue;
+    if (src.type === "licensed_api") continue;
+    if (!src.url || typeof src.url !== "string" || !src.url.startsWith("http")) continue;
 
     let feed;
     try {
