@@ -45,6 +45,39 @@ async function main() {
   const passwordHash = await bcrypt.hash(password, 12);
   const now = new Date().toISOString();
 
+  // Idempotent: if user exists (by email/phone), reset password + promote to admin.
+  let existingId: string | null = null;
+  if (email) {
+    const { data } = await admin.from("system_users").select("id").eq("email", email).maybeSingle();
+    existingId = data?.id ?? null;
+  }
+  if (!existingId && phone) {
+    const { data } = await admin.from("system_users").select("id").eq("phone", phone).maybeSingle();
+    existingId = data?.id ?? null;
+  }
+
+  if (existingId) {
+    const { data, error } = await admin
+      .from("system_users")
+      .update({
+        full_name: fullName,
+        email: email || null,
+        phone: phone || null,
+        password_hash: passwordHash,
+        role: "admin",
+        status: "active",
+        must_change_password: false,
+        updated_at: now
+      })
+      .eq("id", existingId)
+      .select("id")
+      .single();
+
+    if (error) throw new Error(error.message);
+    console.log(`Updated admin user: ${data.id}`);
+    return;
+  }
+
   const { data, error } = await admin
     .from("system_users")
     .insert({
@@ -62,10 +95,7 @@ async function main() {
     .select("id")
     .single();
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
+  if (error) throw new Error(error.message);
   console.log(`Created admin user: ${data.id}`);
 }
 
@@ -73,4 +103,3 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-
