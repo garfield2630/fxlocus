@@ -37,7 +37,11 @@ export function CoursesClient({
   const request = async (courseId: number) => {
     setLoadingId(courseId);
     try {
-      const res = await fetch(`/api/system/courses/${courseId}/request`, { method: "POST" });
+      const res = await fetch("/api/system/courses/request", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ courseId })
+      });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) return;
       router.refresh();
@@ -126,4 +130,3 @@ export function CoursesClient({
     </div>
   );
 }
-

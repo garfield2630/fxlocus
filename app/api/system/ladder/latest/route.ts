@@ -1,51 +1,58 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-import { getSystemAuth } from "@/lib/system/auth";
+import { requireSystemUser } from "@/lib/system/guard";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-function noStoreJson(payload: unknown, status = 200) {
+function json(payload: unknown, status = 200) {
   return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
 }
 
-async function userCanView(admin: ReturnType<typeof supabaseAdmin>, userId: string) {
-  const { data } = await admin
-    .from("ladder_authorizations")
-    .select("enabled")
-    .eq("user_id", userId)
-    .maybeSingle();
-  return Boolean(data?.enabled);
-}
+export async function GET() {
+  try {
+    const { user } = await requireSystemUser();
+    const admin = supabaseAdmin();
 
-export async function GET(_req: NextRequest) {
-  const auth = await getSystemAuth();
-  if (!auth.ok) return noStoreJson({ ok: false, error: auth.reason }, 401);
+    if (user.role !== "admin") {
+      const auth = await admin
+        .from("ladder_authorizations")
+        .select("status,enabled")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-  const admin = supabaseAdmin();
-  if (auth.user.role !== "admin") {
-    const enabled = await userCanView(admin, auth.user.id);
-    if (!enabled) return noStoreJson({ ok: true, item: null });
+      const status = String(auth.data?.status || "none");
+      if (!auth.data || status !== "approved" || !auth.data.enabled) {
+        return json({ ok: true, status, url: null });
+      }
+    }
+
+    const snap = await admin
+      .from("ladder_snapshots")
+      .select("storage_bucket,storage_path,captured_at")
+      .order("captured_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!snap.data) return json({ ok: true, status: "approved", url: null });
+
+    const signed = await admin.storage
+      .from(snap.data.storage_bucket)
+      .createSignedUrl(snap.data.storage_path, 60);
+
+    if (signed.error) return json({ ok: false, error: signed.error.message }, 500);
+
+    return json({
+      ok: true,
+      status: "approved",
+      url: signed.data.signedUrl,
+      captured_at: snap.data.captured_at
+    });
+  } catch (e: any) {
+    const code = String(e?.code || "UNAUTHORIZED");
+    const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
+    return json({ ok: false, error: code }, status);
   }
-
-  const { data: snap } = await admin
-    .from("ladder_snapshots")
-    .select("id,storage_bucket,storage_path,captured_at")
-    .order("captured_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!snap) return noStoreJson({ ok: true, item: null });
-
-  const { data: signed } = await admin.storage
-    .from(snap.storage_bucket)
-    .createSignedUrl(snap.storage_path, 180);
-
-  if (!signed?.signedUrl) return noStoreJson({ ok: true, item: null });
-
-  return noStoreJson({
-    ok: true,
-    item: { id: snap.id, url: signed.signedUrl, captured_at: snap.captured_at }
-  });
 }
 

@@ -10,7 +10,7 @@ export function BfcacheGuard({ locale }: { locale: "zh" | "en" }) {
   React.useEffect(() => {
     const onPageShow = (e: PageTransitionEvent) => {
       if (!e.persisted) return;
-      fetch("/api/system/auth/me", { cache: "no-store" })
+      fetch("/api/system/me", { cache: "no-store" })
         .then((r) => r.json())
         .then((json) => {
           if (!json?.ok) {
@@ -28,4 +28,3 @@ export function BfcacheGuard({ locale }: { locale: "zh" | "en" }) {
 
   return null;
 }
-

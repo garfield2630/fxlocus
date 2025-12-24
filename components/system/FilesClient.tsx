@@ -2,6 +2,12 @@
 
 import React from "react";
 
+import { AdminFilesClient } from "@/components/system/admin/AdminFilesClient";
+
+type MeResponse =
+  | { ok: true; user: { role: "admin" | "student" } }
+  | { ok: false; error: string };
+
 type FileItem = {
   id: string;
   category: string;
@@ -12,6 +18,7 @@ type FileItem = {
 };
 
 export function FilesClient({ locale }: { locale: "zh" | "en" }) {
+  const [role, setRole] = React.useState<"admin" | "student" | null>(null);
   const [items, setItems] = React.useState<FileItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -22,11 +29,24 @@ export function FilesClient({ locale }: { locale: "zh" | "en" }) {
       setLoading(true);
       setError(null);
       try {
+        const meRes = await fetch("/api/system/me", { cache: "no-store" });
+        const meJson = (await meRes.json().catch(() => null)) as MeResponse | null;
+        if (!alive) return;
+        if (!meRes.ok || !meJson?.ok) throw new Error((meJson as any)?.error || "load_failed");
+
+        const nextRole = meJson.user.role;
+        setRole(nextRole);
+
+        if (nextRole === "admin") {
+          setLoading(false);
+          return;
+        }
+
         const res = await fetch("/api/system/files/list", { cache: "no-store" });
         const json = await res.json().catch(() => null);
         if (!alive) return;
         if (!res.ok || !json?.ok) throw new Error(json?.error || "load_failed");
-        setItems(Array.isArray(json.items) ? json.items : []);
+        setItems(Array.isArray(json.files) ? json.files : []);
       } catch (e: any) {
         if (!alive) return;
         setError(e?.message || "load_failed");
@@ -34,6 +54,7 @@ export function FilesClient({ locale }: { locale: "zh" | "en" }) {
         if (alive) setLoading(false);
       }
     };
+
     load();
     return () => {
       alive = false;
@@ -41,21 +62,20 @@ export function FilesClient({ locale }: { locale: "zh" | "en" }) {
   }, []);
 
   const download = async (id: string) => {
-    const res = await fetch(`/api/system/files/${id}/download`, { cache: "no-store" });
+    const res = await fetch("/api/system/files/download", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fileId: id })
+    });
     const json = await res.json().catch(() => null);
     if (!res.ok || !json?.ok || !json?.url) return;
     window.open(json.url, "_blank", "noreferrer");
   };
 
+  if (role === "admin") return <AdminFilesClient locale={locale} />;
+
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-        <div className="text-white/90 font-semibold text-xl">{locale === "zh" ? "文件下载" : "Files"}</div>
-        <div className="mt-2 text-white/60 text-sm">
-          {locale === "zh" ? "仅展示已授权文件。" : "Only authorized files are shown."}
-        </div>
-      </div>
-
       {loading ? (
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/60">
           {locale === "zh" ? "加载中…" : "Loading…"}
@@ -70,7 +90,7 @@ export function FilesClient({ locale }: { locale: "zh" | "en" }) {
 
       {!loading && !items.length ? (
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/60">
-          {locale === "zh" ? "暂无授权文件。" : "No authorized files."}
+          {locale === "zh" ? "暂无授权文件" : "No authorized files."}
         </div>
       ) : null}
 
@@ -89,17 +109,11 @@ export function FilesClient({ locale }: { locale: "zh" | "en" }) {
                 {locale === "zh" ? "下载" : "Download"}
               </button>
               <div className="ml-auto text-xs text-white/45">
-                {new Date(f.created_at).toLocaleDateString()}
+                {f.created_at ? new Date(f.created_at).toLocaleDateString() : ""}
               </div>
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="text-xs text-white/45">
-        {locale === "zh"
-          ? "提示：下载记录将用于统计（训练与运营用途）。"
-          : "Note: downloads are logged for basic metrics."}
       </div>
     </div>
   );

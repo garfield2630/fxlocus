@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 import { StatusBadge } from "@/components/system/StatusBadge";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function DashboardPage({ params }: { params: { locale: "zh" | "en" } }) {
   unstable_noStore();

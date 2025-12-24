@@ -130,6 +130,31 @@ export function AdminStudentDetailClient({
     }
   };
 
+  const deleteStudent = async () => {
+    if (!user) return;
+    const ok = window.confirm(
+      locale === "zh" ? "确认删除该学员？此操作不可恢复。" : "Delete this student? This cannot be undone."
+    );
+    if (!ok) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/system/admin/students/delete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId: user.id })
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "delete_failed");
+      window.location.href = `/${locale}/system/admin/students`;
+    } catch (e: any) {
+      setError(e?.message || "delete_failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-white/10 bg-white/5 p-6 flex items-center gap-3">
@@ -189,6 +214,14 @@ export function AdminStudentDetailClient({
                 className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
               >
                 {locale === "zh" ? "重置密码" : "Reset password"}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={deleteStudent}
+                className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-400/20 text-rose-100 hover:bg-rose-500/15 disabled:opacity-50"
+              >
+                {locale === "zh" ? "删除学员" : "Delete"}
               </button>
               <button
                 type="button"
@@ -256,4 +289,3 @@ export function AdminStudentDetailClient({
     </div>
   );
 }
-

@@ -100,10 +100,7 @@ export default async function middleware(request: NextRequest) {
     }
 
     if (rest === "/system" || rest.startsWith("/system/")) {
-      const isPublic =
-        rest === "/system/login" ||
-        rest === "/system/forgot-password" ||
-        rest === "/system/reset-password";
+      const isPublic = rest === "/system/login";
 
       if (!isPublic) {
         const token = request.cookies.get(SYSTEM_COOKIE_NAME)?.value;

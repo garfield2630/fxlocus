@@ -4,7 +4,13 @@ import React from "react";
 
 type Me = {
   ok: boolean;
-  user?: { full_name: string; email: string | null; phone: string | null };
+  user?: {
+    full_name: string;
+    email: string | null;
+    phone: string | null;
+    role: "admin" | "student";
+    status: "active" | "frozen";
+  };
 };
 
 export function ProfileClient({ locale }: { locale: "zh" | "en" }) {
@@ -24,7 +30,7 @@ export function ProfileClient({ locale }: { locale: "zh" | "en" }) {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/system/auth/me", { cache: "no-store" });
+        const res = await fetch("/api/system/me", { cache: "no-store" });
         const json = (await res.json().catch(() => null)) as Me | null;
         if (!alive) return;
         setMe(json);
@@ -168,4 +174,3 @@ export function ProfileClient({ locale }: { locale: "zh" | "en" }) {
     </div>
   );
 }
-

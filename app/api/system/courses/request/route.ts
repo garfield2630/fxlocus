@@ -1,0 +1,68 @@
+import { NextResponse } from "next/server";
+
+import { requireStudent } from "@/lib/system/guard";
+import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function json(payload: unknown, status = 200) {
+  return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+export async function POST(req: Request) {
+  try {
+    const { user } = await requireStudent();
+    const admin = supabaseAdmin();
+    const body = await req.json().catch(() => null);
+
+    const courseId = Number(body?.courseId);
+    if (!Number.isInteger(courseId) || courseId < 1 || courseId > 20) {
+      return json({ ok: false, error: "INVALID_COURSE" }, 400);
+    }
+
+    const now = new Date().toISOString();
+    const { data: existing, error: existErr } = await admin
+      .from("course_access")
+      .select("id,status")
+      .eq("user_id", user.id)
+      .eq("course_id", courseId)
+      .maybeSingle();
+
+    if (existErr) return json({ ok: false, error: "DB_ERROR" }, 500);
+
+    if (!existing) {
+      const ins = await admin.from("course_access").insert({
+        user_id: user.id,
+        course_id: courseId,
+        status: "requested",
+        requested_at: now,
+        updated_at: now
+      });
+      if (ins.error) return json({ ok: false, error: "DB_ERROR" }, 500);
+      return json({ ok: true });
+    }
+
+    if (existing.status === "rejected") {
+      const up = await admin
+        .from("course_access")
+        .update({
+          status: "requested",
+          requested_at: now,
+          reviewed_at: null,
+          reviewed_by: null,
+          rejection_reason: null,
+          updated_at: now
+        })
+        .eq("id", existing.id);
+      if (up.error) return json({ ok: false, error: "DB_ERROR" }, 500);
+    }
+
+    return json({ ok: true });
+  } catch (e: any) {
+    const code = String(e?.code || "UNAUTHORIZED");
+    const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
+    return json({ ok: false, error: code }, status);
+  }
+}
+

@@ -161,10 +161,8 @@ export async function POST(req: Request) {
       user: {
         id: user.id,
         full_name: user.full_name,
-        role: user.role,
-        must_change_password: user.must_change_password
-      },
-      must_change_password: user.must_change_password
+        role: user.role
+      }
     },
     { headers: { "Cache-Control": "no-store" } }
   );

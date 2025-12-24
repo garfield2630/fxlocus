@@ -148,8 +148,8 @@ export function AdminStudentsClient({ locale }: { locale: "zh" | "en" }) {
         </div>
         <div className="mt-3 text-xs text-white/45">
           {locale === "zh"
-            ? "创建后学员首次登录会被要求修改密码。"
-            : "Students are forced to change password on first login."}
+            ? "创建后可直接使用初始密码登录。"
+            : "Students can sign in with the initial password."}
         </div>
       </form>
 
@@ -224,4 +224,3 @@ export function AdminStudentsClient({ locale }: { locale: "zh" | "en" }) {
     </div>
   );
 }
-

@@ -4,6 +4,7 @@ import { getSystemAuth } from "@/lib/system/auth";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 function noStoreJson(payload: unknown, status = 200) {
   return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
@@ -55,11 +56,10 @@ export async function POST(req: NextRequest) {
       uploaded_by: auth.user.id,
       created_at: now
     })
-    .select("id")
+    .select("*")
     .single();
 
   if (dbErr || !row?.id) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
 
-  return noStoreJson({ ok: true, id: row.id });
+  return noStoreJson({ ok: true, file: row });
 }
-

@@ -91,10 +91,10 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
     setGrantingId(fileId);
     setError(null);
     try {
-      const res = await fetch(`/api/system/admin/files/${fileId}/grant`, {
+      const res = await fetch("/api/system/admin/files/grant", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ userId })
+        body: JSON.stringify({ fileId, userId })
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "grant_failed");
@@ -212,4 +212,3 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
     </div>
   );
 }
-

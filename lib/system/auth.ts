@@ -57,16 +57,11 @@ export async function getSystemAuth() {
 }
 
 export async function requireSystemUser(
-  locale: Locale,
-  opts?: { allowMustChangePasswordPage?: boolean }
+  locale: Locale
 ) {
   const res = await getSystemAuth();
   if (!res.ok) {
     redirect(`/${locale}/system/login`);
-  }
-
-  if (!opts?.allowMustChangePasswordPage && res.user.must_change_password) {
-    redirect(`/${locale}/system/first-login`);
   }
 
   return res.user;
