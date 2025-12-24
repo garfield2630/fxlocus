@@ -2,9 +2,6 @@
 
 import React from "react";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 type LoginResponse =
   | { ok: true; user: { id: string; full_name: string; role: "admin" | "student" } }
   | { ok: false; error: string };
@@ -80,4 +77,3 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
     </div>
   );
 }
-
