@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const admin = supabaseAdmin();
   const now = new Date().toISOString();
 
-  const bucket = "fxlocus-ladder";
+  const bucket = "fxlocus_ladder";
   const filename = safeFilename(file.name || "ladder.png");
   const path = `${now.slice(0, 10)}/${Date.now()}-${Math.random().toString(16).slice(2)}-${filename}`;
 

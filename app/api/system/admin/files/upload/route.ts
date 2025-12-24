@@ -1,65 +1,64 @@
-import { NextRequest, NextResponse } from "next/server";
-
-import { getSystemAuth } from "@/lib/system/auth";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function noStoreJson(payload: unknown, status = 200) {
-  return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
-}
+import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/system/guard";
+import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
+import { randomUUID } from "crypto";
 
-function safeFilename(name: string) {
-  return name.replace(/[^\w.\-]+/g, "_").slice(0, 80) || "file";
-}
+export async function POST(req: Request) {
+  try {
+    const { user } = await requireAdmin();
+    const admin = supabaseAdmin();
 
-export async function POST(req: NextRequest) {
-  const auth = await getSystemAuth();
-  if (!auth.ok) return noStoreJson({ ok: false, error: auth.reason }, 401);
-  if (auth.user.role !== "admin") return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
+    const form = await req.formData();
+    const file = form.get("file");
+    const category = String(form.get("category") || "misc");
 
-  const form = await req.formData().catch(() => null);
-  if (!form) return noStoreJson({ ok: false, error: "INVALID_FORM" }, 400);
+    if (!(file instanceof File)) {
+      return NextResponse.json({ ok: false, error: "MISSING_FILE" }, { status: 400 });
+    }
 
-  const file = form.get("file");
-  if (!(file instanceof File)) return noStoreJson({ ok: false, error: "MISSING_FILE" }, 400);
+    // ✅ 注意：这里 bucket 名要和 Supabase Storage 里完全一致
+    const bucket = "fxlocus_files"; // <- 如果你实际叫 fxlocus-files 或别的，这里改成实际名字
 
-  const category = String(form.get("category") || "General").slice(0, 80);
-  const name = String(form.get("name") || file.name || "File").slice(0, 160);
-  const description = String(form.get("description") || "").slice(0, 1000);
+    const safeName = (file.name || "upload.bin").replace(/[^\w.\-()+\s]/g, "_");
+    const path = `${category}/${Date.now()}-${randomUUID()}-${safeName}`;
 
-  const admin = supabaseAdmin();
-  const now = new Date().toISOString();
+    const buf = await file.arrayBuffer();
 
-  const bucket = "fxlocus-files";
-  const filename = safeFilename(file.name || "upload.bin");
-  const path = `${now.slice(0, 10)}/${Date.now()}-${Math.random().toString(16).slice(2)}-${filename}`;
+    const up = await admin.storage.from(bucket).upload(path, buf, {
+      contentType: file.type || "application/octet-stream",
+      upsert: false
+    });
 
-  const bytes = Buffer.from(await file.arrayBuffer());
-  const { error: uploadErr } = await admin.storage.from(bucket).upload(path, bytes, {
-    contentType: file.type || "application/octet-stream",
-    upsert: false
-  });
-  if (uploadErr) return noStoreJson({ ok: false, error: "UPLOAD_FAILED" }, 500);
+    if (up.error) {
+      console.error("[files/upload] storage upload error:", up.error);
+      return NextResponse.json({ ok: false, error: up.error.message }, { status: 500 });
+    }
 
-  const { data: row, error: dbErr } = await admin
-    .from("files")
-    .insert({
-      category,
-      name,
-      description,
-      storage_bucket: bucket,
-      storage_path: path,
-      size_bytes: bytes.length,
-      mime_type: file.type || null,
-      uploaded_by: auth.user.id,
-      created_at: now
-    })
-    .select("*")
-    .single();
+    const ins = await admin
+      .from("files")
+      .insert({
+        category,
+        name: safeName,
+        storage_bucket: bucket,
+        storage_path: path,
+        size_bytes: file.size,
+        mime_type: file.type || null,
+        uploaded_by: user.id
+      })
+      .select("*")
+      .single();
 
-  if (dbErr || !row?.id) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
+    if (ins.error) {
+      console.error("[files/upload] db insert error:", ins.error);
+      return NextResponse.json({ ok: false, error: ins.error.message }, { status: 500 });
+    }
 
-  return noStoreJson({ ok: true, file: row });
+    return NextResponse.json({ ok: true, file: ins.data }, { headers: { "Cache-Control": "no-store" } });
+  } catch (e: any) {
+    console.error("[files/upload] fatal:", e);
+    return NextResponse.json({ ok: false, error: e?.message || "UPLOAD_FAILED" }, { status: 500 });
+  }
 }
