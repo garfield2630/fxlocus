@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
   Bell,
@@ -14,6 +14,7 @@ import {
   Gauge,
   ImageUp,
   LayoutDashboard,
+  LogOut,
   Settings,
   ShieldCheck,
   TrendingUp,
@@ -102,8 +103,10 @@ function SidebarItem({
 
 export function Sidebar({ locale, user }: { locale: "zh" | "en"; user: Pick<SystemUser, "role"> }) {
   const pathname = usePathname() || `/${locale}/system/dashboard`;
+  const router = useRouter();
   const [collapsed, setCollapsed] = React.useState(false);
   const [unread, setUnread] = React.useState(0);
+  const [loggingOut, setLoggingOut] = React.useState(false);
 
   React.useEffect(() => {
     const stored = window.localStorage.getItem("fxlocus_system_sidebar_collapsed");
@@ -135,6 +138,16 @@ export function Sidebar({ locale, user }: { locale: "zh" | "en"; user: Pick<Syst
       window.clearInterval(id);
     };
   }, []);
+
+  const logout = async () => {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/system/auth/logout", { method: "POST" });
+    } finally {
+      router.replace(`/${locale}/system/login`);
+      setLoggingOut(false);
+    }
+  };
 
   const studentItems: NavItem[] = [
     { href: "/system/dashboard", zh: "仪表盘", en: "Dashboard", icon: LayoutDashboard },
@@ -217,7 +230,22 @@ export function Sidebar({ locale, user }: { locale: "zh" | "en"; user: Pick<Syst
           </>
         ) : null}
       </div>
+
+      <div className="p-3 border-t border-white/10">
+        <button
+          type="button"
+          onClick={logout}
+          disabled={loggingOut}
+          className={[
+            "w-full flex items-center gap-3 rounded-2xl border px-3 py-2 text-sm transition-colors",
+            "border-white/10 text-white/75 hover:bg-white/5 hover:text-white",
+            collapsed ? "justify-center" : ""
+          ].join(" ")}
+        >
+          <LogOut className="h-4 w-4 text-white/70" />
+          {!collapsed ? <span>{locale === "zh" ? "退出系统" : "Logout"}</span> : null}
+        </button>
+      </div>
     </aside>
   );
 }
-

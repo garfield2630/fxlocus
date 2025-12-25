@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -70,10 +70,9 @@ export function Topbar({ locale, user }: Props) {
           onClick={logout}
           className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
         >
-          {locale === "zh" ? "退出" : "Logout"}
+          {locale === "zh" ? "退出系统" : "Logout"}
         </button>
       </div>
     </div>
   );
 }
-
