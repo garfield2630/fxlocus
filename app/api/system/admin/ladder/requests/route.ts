@@ -17,17 +17,34 @@ export async function GET() {
 
     const q = await admin
       .from("ladder_authorizations")
-      .select("user_id,status,requested_at,system_users(full_name,email,phone)")
+      .select("user_id,status,requested_at")
       .eq("status", "requested")
       .order("requested_at", { ascending: false })
       .limit(300);
 
     if (q.error) return json({ ok: false, error: q.error.message }, 500);
-    return json({ ok: true, items: q.data || [] });
+
+    const rows = q.data || [];
+    const userIds = Array.from(new Set(rows.map((r: any) => String(r.user_id)).filter(Boolean)));
+
+    const usersRes = userIds.length
+      ? await admin.from("system_users").select("id,full_name,email,phone").in("id", userIds)
+      : ({ data: [], error: null } as any);
+
+    if (usersRes.error) return json({ ok: false, error: usersRes.error.message }, 500);
+
+    const usersById = new Map((usersRes.data || []).map((u: any) => [u.id, u]));
+    const items = rows.map((r: any) => ({
+      user_id: r.user_id,
+      status: r.status,
+      requested_at: r.requested_at,
+      user: usersById.get(r.user_id) || null
+    }));
+
+    return json({ ok: true, items });
   } catch (e: any) {
     const code = String(e?.code || "UNAUTHORIZED");
     const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
     return json({ ok: false, error: code }, status);
   }
 }
-

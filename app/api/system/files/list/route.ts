@@ -15,27 +15,48 @@ export async function GET() {
     const { user } = await requireStudent();
     const admin = supabaseAdmin();
 
-    const perms = await admin
-      .from("file_permissions")
-      .select("file_id")
-      .eq("user_id", user.id);
+    const [filesRes, permsRes, reqRes] = await Promise.all([
+      admin
+        .from("files")
+        .select("id,category,name,description,size_bytes,mime_type,created_at")
+        .order("created_at", { ascending: false })
+        .limit(300),
+      admin.from("file_permissions").select("file_id").eq("user_id", user.id),
+      admin
+        .from("file_access_requests")
+        .select("file_id,status,rejection_reason,requested_at,reviewed_at")
+        .eq("user_id", user.id)
+    ]);
 
-    if (perms.error) return json({ ok: false, error: perms.error.message }, 500);
+    if (filesRes.error) return json({ ok: false, error: filesRes.error.message }, 500);
+    if (permsRes.error) return json({ ok: false, error: permsRes.error.message }, 500);
 
-    const fileIds = Array.from(
-      new Set((perms.data || []).map((p: any) => p.file_id).filter(Boolean))
-    );
+    let requests: any[] = [];
+    if (reqRes.error) {
+      const msg = String(reqRes.error.message || "");
+      if (!msg.toLowerCase().includes("does not exist")) {
+        return json({ ok: false, error: reqRes.error.message }, 500);
+      }
+    } else {
+      requests = reqRes.data || [];
+    }
 
-    if (!fileIds.length) return json({ ok: true, files: [] });
+    const allowed = new Set((permsRes.data || []).map((p: any) => p.file_id).filter(Boolean));
+    const reqByFile = new Map(requests.map((r: any) => [r.file_id, r]));
 
-    const files = await admin
-      .from("files")
-      .select("id,category,name,description,size_bytes,created_at")
-      .in("id", fileIds)
-      .order("created_at", { ascending: false });
+    const files = (filesRes.data || []).map((f: any) => {
+      const req = reqByFile.get(f.id);
+      return {
+        ...f,
+        can_download: allowed.has(f.id),
+        request_status: req?.status || "none",
+        rejection_reason: req?.rejection_reason || null,
+        requested_at: req?.requested_at || null,
+        reviewed_at: req?.reviewed_at || null
+      };
+    });
 
-    if (files.error) return json({ ok: false, error: files.error.message }, 500);
-    return json({ ok: true, files: files.data || [] });
+    return json({ ok: true, files });
   } catch (e: any) {
     const code = String(e?.code || "UNAUTHORIZED");
     const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;

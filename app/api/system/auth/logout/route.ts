@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 import { getIpFromHeaders, getUserAgent, parseDevice } from "@/lib/system/requestMeta";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 function cookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
@@ -53,4 +54,3 @@ export async function POST(req: NextRequest) {
   res.cookies.set(SYSTEM_COOKIE, "", cookieOptions());
   return res;
 }
-

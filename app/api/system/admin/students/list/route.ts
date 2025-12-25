@@ -1,18 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-import { getSystemAuth } from "@/lib/system/auth";
+import { requireAdmin } from "@/lib/system/guard";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 function noStoreJson(payload: unknown, status = 200) {
   return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
 }
 
-export async function GET(_req: NextRequest) {
-  const auth = await getSystemAuth();
-  if (!auth.ok) return noStoreJson({ ok: false, error: auth.reason }, 401);
-  if (auth.user.role !== "admin") return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
+export async function GET() {
+  try {
+    await requireAdmin();
+  } catch (e: any) {
+    const code = String(e?.code || "UNAUTHORIZED");
+    const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
+    return noStoreJson({ ok: false, error: code }, status);
+  }
 
   const admin = supabaseAdmin();
   const { data: users, error } = await admin
@@ -56,4 +61,3 @@ export async function GET(_req: NextRequest) {
 
   return noStoreJson({ ok: true, items });
 }
-

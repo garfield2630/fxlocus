@@ -2,6 +2,8 @@
 
 import React from "react";
 
+import { isStrongSystemPassword } from "@/lib/system/passwordPolicy";
+
 type AccessRow = {
   id: string;
   course_id: number;
@@ -22,6 +24,8 @@ type UserRow = {
   created_at?: string;
   last_login_at?: string | null;
   must_change_password?: boolean;
+  password_updated_at?: string | null;
+  password_updated_reason?: string | null;
 };
 
 export function AdminStudentDetailClient({
@@ -38,6 +42,7 @@ export function AdminStudentDetailClient({
   const [resetPw, setResetPw] = React.useState<string | null>(null);
   const [msg, setMsg] = React.useState({ title: "", content: "" });
   const [busy, setBusy] = React.useState(false);
+  const [customPassword, setCustomPassword] = React.useState("");
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -79,15 +84,22 @@ export function AdminStudentDetailClient({
     if (!user) return;
     setBusy(true);
     setResetPw(null);
+    setError(null);
     try {
+      if (customPassword && !isStrongSystemPassword(customPassword)) {
+        throw new Error(locale === "zh" ? "新密码强度不足" : "Weak password");
+      }
+
       const res = await fetch(`/api/system/admin/students/${user.id}/reset-password`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({})
+        body: JSON.stringify(customPassword ? { newPassword: customPassword } : {})
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "reset_failed");
       setResetPw(String(json.newPassword || ""));
+      setCustomPassword("");
+      await load();
     } catch (e: any) {
       setError(e?.message || "reset_failed");
     } finally {
@@ -155,50 +167,27 @@ export function AdminStudentDetailClient({
     }
   };
 
+  const field = (label: string, value?: string | null) => (
+    <div className="text-xs text-white/50">
+      {label}: <span className="text-white/80">{value || "-"}</span>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6 flex items-center gap-3">
-        <div>
-          <div className="text-white/90 font-semibold text-xl">
-            {locale === "zh" ? "学员详情" : "Student detail"}
-          </div>
-          <div className="mt-1 text-white/60 text-sm">{userId}</div>
-        </div>
-        <a
-          className="ml-auto px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10"
-          href={`/${locale}/system/admin/students`}
-        >
-          {locale === "zh" ? "返回列表" : "Back"}
-        </a>
-      </div>
-
       {loading ? (
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/60">
           {locale === "zh" ? "加载中…" : "Loading…"}
         </div>
       ) : null}
 
-      {error ? (
-        <div className="rounded-3xl border border-rose-400/20 bg-rose-500/10 p-6 text-rose-100">
-          {error}
-        </div>
-      ) : null}
-
       {user ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-3">
-            <div className="text-white/85 font-semibold">{locale === "zh" ? "基本信息" : "Info"}</div>
-            <div className="text-white/90 font-semibold text-lg">{user.full_name}</div>
-            <div className="text-sm text-white/65">
-              {user.email || "-"} {user.phone ? `· ${user.phone}` : ""}
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="text-white/90 font-semibold text-xl">
+              {locale === "zh" ? "学员详情" : "Student details"}
             </div>
-            <div className="text-xs text-white/50">
-              {locale === "zh" ? "状态" : "Status"}:{" "}
-              <span className={user.status === "active" ? "text-emerald-300" : "text-rose-300"}>
-                {user.status}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 pt-2">
+            <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
                 disabled={busy}
@@ -223,25 +212,58 @@ export function AdminStudentDetailClient({
               >
                 {locale === "zh" ? "删除学员" : "Delete"}
               </button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2">
+              <div className="text-white/85 font-semibold">{locale === "zh" ? "基本信息" : "Profile"}</div>
+              {field(locale === "zh" ? "姓名" : "Name", user.full_name)}
+              {field(locale === "zh" ? "邮箱" : "Email", user.email)}
+              {field(locale === "zh" ? "手机号" : "Phone", user.phone)}
+              {field(locale === "zh" ? "角色" : "Role", user.role)}
+              {field(locale === "zh" ? "状态" : "Status", user.status)}
+              {field(locale === "zh" ? "注册时间" : "Created", user.created_at ? new Date(user.created_at).toLocaleString() : null)}
+              {field(locale === "zh" ? "最后登录" : "Last login", user.last_login_at ? new Date(user.last_login_at).toLocaleString() : null)}
+              {field(locale === "zh" ? "密码更新时间" : "Password updated", user.password_updated_at ? new Date(user.password_updated_at).toLocaleString() : null)}
+              {field(
+                locale === "zh" ? "密码更新来源" : "Password update reason",
+                user.password_updated_reason || "-"
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+              <div className="text-white/85 font-semibold">{locale === "zh" ? "重置密码" : "Reset password"}</div>
+              <input
+                value={customPassword}
+                onChange={(e) => setCustomPassword(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/85 text-sm"
+                placeholder={locale === "zh" ? "输入新密码（可选）" : "Custom password (optional)"}
+              />
+              <div className="text-xs text-white/45">
+                {locale === "zh"
+                  ? "规则：大写+小写+数字+特殊字符，长度 8-64"
+                  : "Rule: upper+lower+digit+special, 8-64 chars."}
+              </div>
+              {resetPw ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-white/80">
+                  {locale === "zh" ? "新密码：" : "New password: "}{" "}
+                  <span className="font-semibold">{resetPw}</span>
+                </div>
+              ) : null}
               <button
                 type="button"
                 disabled={busy}
-                onClick={approveAll}
-                className="ml-auto px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                onClick={resetPassword}
+                className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15 disabled:opacity-50"
               >
-                {locale === "zh" ? "通过所有申请" : "Approve requests"}
+                {locale === "zh" ? "执行重置" : "Reset now"}
               </button>
             </div>
-            {resetPw ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-white/80">
-                {locale === "zh" ? "新密码：" : "New password: "}{" "}
-                <span className="font-semibold">{resetPw}</span>
-              </div>
-            ) : null}
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-3">
-            <div className="text-white/85 font-semibold">{locale === "zh" ? "发送消息" : "Send message"}</div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+            <div className="text-white/85 font-semibold">{locale === "zh" ? "发送通知" : "Send message"}</div>
             <input
               value={msg.title}
               onChange={(e) => setMsg((p) => ({ ...p, title: e.target.value }))}
@@ -254,14 +276,24 @@ export function AdminStudentDetailClient({
               className="w-full min-h-[120px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/85 text-sm"
               placeholder={locale === "zh" ? "内容" : "Content"}
             />
-            <button
-              type="button"
-              disabled={busy || !msg.content.trim()}
-              onClick={sendMessage}
-              className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15 disabled:opacity-50"
-            >
-              {locale === "zh" ? "发送" : "Send"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={busy || !msg.content.trim()}
+                onClick={sendMessage}
+                className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15 disabled:opacity-50"
+              >
+                {locale === "zh" ? "发送" : "Send"}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={approveAll}
+                className="ml-auto px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+              >
+                {locale === "zh" ? "通过所有申请" : "Approve requests"}
+              </button>
+            </div>
             <div className="text-xs text-white/45">
               {locale === "zh"
                 ? "消息会出现在学员系统的“通知”里。"
@@ -269,6 +301,10 @@ export function AdminStudentDetailClient({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {error ? (
+        <div className="rounded-3xl border border-rose-400/20 bg-rose-500/10 p-6 text-rose-100">{error}</div>
       ) : null}
 
       <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
@@ -289,3 +325,4 @@ export function AdminStudentDetailClient({
     </div>
   );
 }
+

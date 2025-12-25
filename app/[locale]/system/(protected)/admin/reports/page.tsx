@@ -3,6 +3,7 @@ import { unstable_noStore } from "next/cache";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function AdminReportsPage({ params }: { params: { locale: "zh" | "en" } }) {
   unstable_noStore();

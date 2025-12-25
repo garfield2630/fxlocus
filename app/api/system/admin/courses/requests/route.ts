@@ -1,30 +1,65 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-import { getSystemAuth } from "@/lib/system/auth";
+import { requireAdmin } from "@/lib/system/guard";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-function noStoreJson(payload: unknown, status = 200) {
+function json(payload: unknown, status = 200) {
   return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
 }
 
-export async function GET(_req: NextRequest) {
-  const auth = await getSystemAuth();
-  if (!auth.ok) return noStoreJson({ ok: false, error: auth.reason }, 401);
-  if (auth.user.role !== "admin") return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
+export async function GET() {
+  try {
+    await requireAdmin();
+    const admin = supabaseAdmin();
 
-  const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("course_access")
-    .select(
-      "id,user_id,course_id,status,requested_at,system_users(full_name,email,phone),courses(title_en,title_zh)"
-    )
-    .eq("status", "requested")
-    .order("requested_at", { ascending: false })
-    .limit(300);
+    const q = await admin
+      .from("course_access")
+      .select("id,user_id,course_id,status,requested_at")
+      .eq("status", "requested")
+      .order("requested_at", { ascending: false })
+      .limit(300);
 
-  if (error) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
-  return noStoreJson({ ok: true, items: data || [] });
+    if (q.error) return json({ ok: false, error: q.error.message }, 500);
+
+    const rows = q.data || [];
+    const userIds = Array.from(new Set(rows.map((r: any) => String(r.user_id)).filter(Boolean)));
+    const courseIds = Array.from(new Set(rows.map((r: any) => Number(r.course_id)).filter(Boolean)));
+
+    const [usersRes, coursesRes] = await Promise.all([
+      userIds.length
+        ? admin
+            .from("system_users")
+            .select("id,full_name,email,phone")
+            .in("id", userIds)
+        : Promise.resolve({ data: [], error: null } as any),
+      courseIds.length
+        ? admin.from("courses").select("id,title_zh,title_en").in("id", courseIds)
+        : Promise.resolve({ data: [], error: null } as any)
+    ]);
+
+    if (usersRes.error) return json({ ok: false, error: usersRes.error.message }, 500);
+    if (coursesRes.error) return json({ ok: false, error: coursesRes.error.message }, 500);
+
+    const usersById = new Map((usersRes.data || []).map((u: any) => [u.id, u]));
+    const coursesById = new Map((coursesRes.data || []).map((c: any) => [c.id, c]));
+
+    const items = rows.map((r: any) => ({
+      id: r.id,
+      user_id: r.user_id,
+      course_id: r.course_id,
+      status: r.status,
+      requested_at: r.requested_at,
+      user: usersById.get(r.user_id) || null,
+      course: coursesById.get(r.course_id) || null
+    }));
+
+    return json({ ok: true, items });
+  } catch (e: any) {
+    const code = String(e?.code || "UNAUTHORIZED");
+    const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
+    return json({ ok: false, error: code }, status);
+  }
 }
-

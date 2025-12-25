@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getSystemAuth } from "@/lib/system/auth";
+import { requireAdmin } from "@/lib/system/guard";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const Body = z.object({
   userId: z.string().optional(),
@@ -17,9 +18,15 @@ function noStoreJson(payload: unknown, status = 200) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await getSystemAuth();
-  if (!auth.ok) return noStoreJson({ ok: false, error: auth.reason }, 401);
-  if (auth.user.role !== "admin") return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
+  let adminUserId = "";
+  try {
+    const ctx = await requireAdmin();
+    adminUserId = ctx.user.id;
+  } catch (e: any) {
+    const code = String(e?.code || "UNAUTHORIZED");
+    const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
+    return noStoreJson({ ok: false, error: code }, status);
+  }
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return noStoreJson({ ok: false, error: "INVALID_BODY" }, 400);
@@ -27,23 +34,57 @@ export async function POST(req: NextRequest) {
   const admin = supabaseAdmin();
   const now = new Date().toISOString();
 
-  let query = admin
+  let selectQuery = admin
+    .from("course_access")
+    .select("user_id,course_id")
+    .eq("status", "requested");
+
+  if (parsed.data.userId) selectQuery = selectQuery.eq("user_id", parsed.data.userId);
+  if (parsed.data.fromCourseId) selectQuery = selectQuery.gte("course_id", parsed.data.fromCourseId);
+  if (parsed.data.toCourseId) selectQuery = selectQuery.lte("course_id", parsed.data.toCourseId);
+
+  const { data: targets, error: selErr } = await selectQuery.limit(2000);
+  if (selErr) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
+
+  let updateQuery = admin
     .from("course_access")
     .update({
       status: "approved",
       reviewed_at: now,
-      reviewed_by: auth.user.id,
+      reviewed_by: adminUserId,
       rejection_reason: null,
       updated_at: now
     })
     .eq("status", "requested");
 
-  if (parsed.data.userId) query = query.eq("user_id", parsed.data.userId);
-  if (parsed.data.fromCourseId) query = query.gte("course_id", parsed.data.fromCourseId);
-  if (parsed.data.toCourseId) query = query.lte("course_id", parsed.data.toCourseId);
+  if (parsed.data.userId) updateQuery = updateQuery.eq("user_id", parsed.data.userId);
+  if (parsed.data.fromCourseId) updateQuery = updateQuery.gte("course_id", parsed.data.fromCourseId);
+  if (parsed.data.toCourseId) updateQuery = updateQuery.lte("course_id", parsed.data.toCourseId);
 
-  const { error } = await query;
+  const { error } = await updateQuery;
   if (error) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
+
+  const courseIds = Array.from(new Set((targets || []).map((t: any) => Number(t.course_id)).filter(Boolean)));
+  const { data: courses } = courseIds.length
+    ? await admin.from("courses").select("id,title_zh,title_en").in("id", courseIds)
+    : { data: [] as any[] };
+  const courseById = new Map((courses || []).map((c: any) => [c.id, c]));
+
+  const notifications = (targets || []).map((t: any) => {
+    const c = courseById.get(Number(t.course_id));
+    const label = `#${t.course_id} ${c?.title_zh || c?.title_en || ""}`.trim();
+    return {
+      to_user_id: t.user_id,
+      from_user_id: adminUserId,
+      title: "课程申请已通过 / Course approved",
+      content: `你的课程申请已通过：${label}\n\nYour course request has been approved: ${label}`
+    };
+  });
+
+  if (notifications.length) {
+    const ins = await admin.from("notifications").insert(notifications as any);
+    if (ins.error) return noStoreJson({ ok: false, error: "NOTIFY_FAILED" }, 500);
+  }
+
   return noStoreJson({ ok: true });
 }
-

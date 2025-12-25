@@ -46,6 +46,20 @@ export async function POST(req: Request) {
         rejection_reason: status === "rejected" ? reason : null
       } as any);
       if (ins.error) return json({ ok: false, error: ins.error.message }, 500);
+
+      const note = await admin.from("notifications").insert({
+        to_user_id: userId,
+        from_user_id: user.id,
+        title:
+          status === "approved"
+            ? "天梯申请已通过 / Ladder approved"
+            : "天梯申请被拒绝 / Ladder rejected",
+        content:
+          status === "approved"
+            ? "你的天梯申请已通过，现在可以查看天梯。\n\nYour ladder request has been approved. You can view the ladder now."
+            : `你的天梯申请被拒绝。原因：${reason || "Rejected"}\n\nYour ladder request was rejected. Reason: ${reason || "Rejected"}`
+      } as any);
+      if (note.error) return json({ ok: false, error: "NOTIFY_FAILED" }, 500);
       return json({ ok: true });
     }
 
@@ -61,6 +75,20 @@ export async function POST(req: Request) {
       .eq("user_id", userId);
 
     if (up.error) return json({ ok: false, error: up.error.message }, 500);
+
+    const note = await admin.from("notifications").insert({
+      to_user_id: userId,
+      from_user_id: user.id,
+      title:
+        status === "approved"
+          ? "天梯申请已通过 / Ladder approved"
+          : "天梯申请被拒绝 / Ladder rejected",
+      content:
+        status === "approved"
+          ? "你的天梯申请已通过，现在可以查看天梯。\n\nYour ladder request has been approved. You can view the ladder now."
+          : `你的天梯申请被拒绝。原因：${reason || "Rejected"}\n\nYour ladder request was rejected. Reason: ${reason || "Rejected"}`
+    } as any);
+    if (note.error) return json({ ok: false, error: "NOTIFY_FAILED" }, 500);
     return json({ ok: true });
   } catch (e: any) {
     const code = String(e?.code || "UNAUTHORIZED");
@@ -68,4 +96,3 @@ export async function POST(req: Request) {
     return json({ ok: false, error: code }, status);
   }
 }
-

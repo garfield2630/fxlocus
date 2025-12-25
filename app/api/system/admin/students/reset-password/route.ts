@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/system/guard";
 import { hashPassword } from "@/lib/system/password";
+import { isStrongSystemPassword } from "@/lib/system/passwordPolicy";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -13,20 +14,28 @@ function json(payload: unknown, status = 200) {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin();
+    const { user: adminUser } = await requireAdmin();
     const admin = supabaseAdmin();
     const body = await req.json().catch(() => null);
     const userId = String(body?.userId || "");
     const newPassword = String(body?.newPassword || "");
 
     if (!userId || !newPassword) return json({ ok: false, error: "INVALID_BODY" }, 400);
+    if (!isStrongSystemPassword(newPassword)) return json({ ok: false, error: "WEAK_PASSWORD" }, 400);
 
     const now = new Date().toISOString();
     const passwordHash = await hashPassword(newPassword);
 
     const up = await admin
       .from("system_users")
-      .update({ password_hash: passwordHash, updated_at: now, must_change_password: false })
+      .update({
+        password_hash: passwordHash,
+        must_change_password: false,
+        password_updated_at: now,
+        password_updated_by: adminUser.id,
+        password_updated_reason: "admin_reset",
+        updated_at: now
+      } as any)
       .eq("id", userId);
 
     if (up.error) return json({ ok: false, error: up.error.message }, 500);
@@ -44,4 +53,3 @@ export async function POST(req: Request) {
     return json({ ok: false, error: code }, status);
   }
 }
-

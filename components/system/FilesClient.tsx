@@ -14,7 +14,11 @@ type FileItem = {
   name: string;
   description?: string | null;
   size_bytes: number;
+  mime_type?: string | null;
   created_at: string;
+  can_download: boolean;
+  request_status: "none" | "requested" | "approved" | "rejected";
+  rejection_reason?: string | null;
 };
 
 export function FilesClient({ locale }: { locale: "zh" | "en" }) {
@@ -22,6 +26,13 @@ export function FilesClient({ locale }: { locale: "zh" | "en" }) {
   const [items, setItems] = React.useState<FileItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const loadFiles = React.useCallback(async () => {
+    const res = await fetch("/api/system/files/list", { cache: "no-store" });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.ok) throw new Error(json?.error || "load_failed");
+    setItems(Array.isArray(json.files) ? json.files : []);
+  }, []);
 
   React.useEffect(() => {
     let alive = true;
@@ -42,11 +53,7 @@ export function FilesClient({ locale }: { locale: "zh" | "en" }) {
           return;
         }
 
-        const res = await fetch("/api/system/files/list", { cache: "no-store" });
-        const json = await res.json().catch(() => null);
-        if (!alive) return;
-        if (!res.ok || !json?.ok) throw new Error(json?.error || "load_failed");
-        setItems(Array.isArray(json.files) ? json.files : []);
+        await loadFiles();
       } catch (e: any) {
         if (!alive) return;
         setError(e?.message || "load_failed");
@@ -59,7 +66,7 @@ export function FilesClient({ locale }: { locale: "zh" | "en" }) {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [loadFiles]);
 
   const download = async (id: string) => {
     const res = await fetch("/api/system/files/download", {
@@ -72,10 +79,30 @@ export function FilesClient({ locale }: { locale: "zh" | "en" }) {
     window.open(json.url, "_blank", "noreferrer");
   };
 
+  const requestAccess = async (fileId: string) => {
+    const res = await fetch("/api/system/files/request", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fileId })
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.ok) return;
+    await loadFiles();
+  };
+
   if (role === "admin") return <AdminFilesClient locale={locale} />;
 
   return (
     <div className="space-y-6">
+      <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div className="text-white/90 font-semibold text-xl">{locale === "zh" ? "文件" : "Files"}</div>
+        <div className="mt-2 text-white/60 text-sm">
+          {locale === "zh"
+            ? "可查看全部资料，未授权的文件可提交申请；通过后可下载。"
+            : "Browse files. Request access for locked items, and download after approval."}
+        </div>
+      </div>
+
       {loading ? (
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/60">
           {locale === "zh" ? "加载中…" : "Loading…"}
@@ -90,7 +117,7 @@ export function FilesClient({ locale }: { locale: "zh" | "en" }) {
 
       {!loading && !items.length ? (
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/60">
-          {locale === "zh" ? "暂无授权文件" : "No authorized files."}
+          {locale === "zh" ? "暂无文件" : "No files."}
         </div>
       ) : null}
 
@@ -100,14 +127,44 @@ export function FilesClient({ locale }: { locale: "zh" | "en" }) {
             <div className="text-xs text-white/50">{f.category}</div>
             <div className="mt-2 text-white/90 font-semibold">{f.name}</div>
             {f.description ? <div className="mt-2 text-sm text-white/65 leading-6">{f.description}</div> : null}
+
+            {!f.can_download ? (
+              <div className="mt-3 text-xs text-white/55">
+                {f.request_status === "requested"
+                  ? locale === "zh"
+                    ? "已申请，等待审批"
+                    : "Requested (pending)"
+                  : f.request_status === "rejected"
+                    ? locale === "zh"
+                      ? `已拒绝：${f.rejection_reason || "-"}`
+                      : `Rejected: ${f.rejection_reason || "-"}`
+                    : locale === "zh"
+                      ? "未授权，可申请权限"
+                      : "Locked. You can request access."}
+              </div>
+            ) : null}
+
             <div className="mt-4 flex items-center gap-2">
-              <button
-                type="button"
-                className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15"
-                onClick={() => download(f.id)}
-              >
-                {locale === "zh" ? "下载" : "Download"}
-              </button>
+              {f.can_download ? (
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15"
+                  onClick={() => download(f.id)}
+                >
+                  {locale === "zh" ? "下载" : "Download"}
+                </button>
+              ) : f.request_status === "requested" ? (
+                <span className="text-xs text-white/50">{locale === "zh" ? "等待审批…" : "Pending…"}</span>
+              ) : (
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10"
+                  onClick={() => requestAccess(f.id)}
+                >
+                  {locale === "zh" ? "申请权限" : "Request access"}
+                </button>
+              )}
+
               <div className="ml-auto text-xs text-white/45">
                 {f.created_at ? new Date(f.created_at).toLocaleDateString() : ""}
               </div>

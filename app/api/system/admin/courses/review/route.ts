@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getSystemAuth } from "@/lib/system/auth";
+import { requireAdmin } from "@/lib/system/guard";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const Body = z.object({
   accessId: z.string().min(1),
@@ -24,9 +25,15 @@ function noStoreJson(payload: unknown, status = 200) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await getSystemAuth();
-  if (!auth.ok) return noStoreJson({ ok: false, error: auth.reason }, 401);
-  if (auth.user.role !== "admin") return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
+  let adminUserId = "";
+  try {
+    const ctx = await requireAdmin();
+    adminUserId = ctx.user.id;
+  } catch (e: any) {
+    const code = String(e?.code || "UNAUTHORIZED");
+    const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
+    return noStoreJson({ ok: false, error: code }, status);
+  }
 
   const raw = await req.json().catch(() => null);
   const parsed = Body.safeParse(raw);
@@ -36,10 +43,51 @@ export async function POST(req: NextRequest) {
   const admin = supabaseAdmin();
   const now = new Date().toISOString();
 
+  const notify = async (
+    toUserId: string,
+    courseId: number,
+    status: "approved" | "rejected",
+    reason?: string
+  ) => {
+    const { data: c } = await admin
+      .from("courses")
+      .select("id,title_zh,title_en")
+      .eq("id", courseId)
+      .maybeSingle();
+
+    const label = `#${courseId} ${c?.title_zh || c?.title_en || ""}`.trim();
+    const title =
+      status === "approved"
+        ? "课程申请已通过 / Course approved"
+        : "课程申请被拒绝 / Course rejected";
+    const content =
+      status === "approved"
+        ? `你的课程申请已通过：${label}\n\nYour course request has been approved: ${label}`
+        : `你的课程申请被拒绝：${label}\n原因：${reason || "Rejected"}\n\nYour course request was rejected: ${label}\nReason: ${reason || "Rejected"}`;
+
+    const ins = await admin.from("notifications").insert({
+      to_user_id: toUserId,
+      from_user_id: adminUserId,
+      title,
+      content
+    } as any);
+
+    if (ins.error) return ins.error;
+    return null;
+  };
+
   if (parsed.success) {
+    const { data: row, error: rowErr } = await admin
+      .from("course_access")
+      .select("user_id,course_id")
+      .eq("id", parsed.data.accessId)
+      .maybeSingle();
+    if (rowErr) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
+    if (!row) return noStoreJson({ ok: false, error: "NOT_FOUND" }, 404);
+
     const payload: Record<string, unknown> = {
       reviewed_at: now,
-      reviewed_by: auth.user.id,
+      reviewed_by: adminUserId,
       updated_at: now
     };
 
@@ -53,6 +101,14 @@ export async function POST(req: NextRequest) {
 
     const { error } = await admin.from("course_access").update(payload).eq("id", parsed.data.accessId);
     if (error) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
+
+    const nerr = await notify(
+      String(row.user_id),
+      Number(row.course_id),
+      (payload.status as any) === "approved" ? "approved" : "rejected",
+      String(payload.rejection_reason || "")
+    );
+    if (nerr) return noStoreJson({ ok: false, error: "NOTIFY_FAILED" }, 500);
     return noStoreJson({ ok: true });
   }
 
@@ -78,11 +134,13 @@ export async function POST(req: NextRequest) {
       course_id: parsedByUser.data.courseId,
       status,
       reviewed_at: now,
-      reviewed_by: auth.user.id,
+      reviewed_by: adminUserId,
       rejection_reason: status === "rejected" ? reason : null,
       updated_at: now
     } as any);
     if (ins.error) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
+    const nerr = await notify(parsedByUser.data.userId, parsedByUser.data.courseId, status as any, reason);
+    if (nerr) return noStoreJson({ ok: false, error: "NOTIFY_FAILED" }, 500);
     return noStoreJson({ ok: true });
   }
 
@@ -91,7 +149,7 @@ export async function POST(req: NextRequest) {
     .update({
       status,
       reviewed_at: now,
-      reviewed_by: auth.user.id,
+      reviewed_by: adminUserId,
       rejection_reason: status === "rejected" ? reason : null,
       updated_at: now
     })
@@ -99,5 +157,7 @@ export async function POST(req: NextRequest) {
 
   if (upd.error) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
 
+  const nerr = await notify(parsedByUser.data.userId, parsedByUser.data.courseId, status as any, reason);
+  if (nerr) return noStoreJson({ ok: false, error: "NOTIFY_FAILED" }, 500);
   return noStoreJson({ ok: true });
 }

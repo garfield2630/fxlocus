@@ -11,7 +11,7 @@ function json(payload: unknown, status = 200) {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin();
+    const { user: adminUser } = await requireAdmin();
     const admin = supabaseAdmin();
     const body = await req.json().catch(() => null);
 
@@ -28,6 +28,22 @@ export async function POST(req: Request) {
       .single();
 
     if (ins.error) return json({ ok: false, error: ins.error.message }, 500);
+
+    const { data: f } = await admin
+      .from("files")
+      .select("id,name,category")
+      .eq("id", fileId)
+      .maybeSingle();
+
+    const label = f ? `${f.category || ""} ${f.name || ""}`.trim() : fileId;
+    const note = await admin.from("notifications").insert({
+      to_user_id: userId,
+      from_user_id: adminUser.id,
+      title: "文件已授权 / File access granted",
+      content: `你已获得文件下载权限：${label}\n\nYou have been granted access to download: ${label}`
+    } as any);
+
+    if (note.error) return json({ ok: false, error: "NOTIFY_FAILED" }, 500);
     return json({ ok: true });
   } catch (e: any) {
     const code = String(e?.code || "UNAUTHORIZED");
@@ -35,4 +51,3 @@ export async function POST(req: Request) {
     return json({ ok: false, error: code }, status);
   }
 }
-

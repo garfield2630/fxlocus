@@ -10,6 +10,9 @@ type CourseRow = {
   content_type: "video" | "doc" | "mixed";
   video_url?: string | null;
   doc_url?: string | null;
+  content_url?: string | null;
+  content_file_name?: string | null;
+  content_mime_type?: string | null;
 };
 
 type AccessRow = {
@@ -129,9 +132,7 @@ export function CoursePlayerClient({
 
       <main className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden min-h-0 flex flex-col">
         <div className="p-4 border-b border-white/10">
-          <div className="text-white/90 font-semibold text-lg">
-            {locale === "zh" ? course.title_zh : course.title_en}
-          </div>
+          <div className="text-white/90 font-semibold text-lg">{locale === "zh" ? course.title_zh : course.title_en}</div>
           <div className="mt-1 text-xs text-white/50 flex items-center gap-2">
             <span>{savingProgress ? (locale === "zh" ? "进度保存中…" : "Saving…") : null}</span>
             <span className="ml-auto">
@@ -151,8 +152,27 @@ export function CoursePlayerClient({
             <video ref={videoRef} className="h-full w-full" controls src={course.video_url || undefined} />
           ) : course.doc_url ? (
             <iframe className="h-full w-full" src={course.doc_url || undefined} />
+          ) : course.content_url ? (
+            <div className="p-6">
+              <div className="text-white/80 font-semibold">{locale === "zh" ? "课程内容文件" : "Course content file"}</div>
+              <div className="mt-2 text-sm text-white/60 break-all">
+                {course.content_file_name || course.content_mime_type || ""}
+              </div>
+              <div className="mt-4">
+                <a
+                  href={course.content_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15"
+                >
+                  {locale === "zh" ? "打开/下载" : "Open / Download"}
+                </a>
+              </div>
+            </div>
           ) : (
-            <div className="p-6 text-white/60">{locale === "zh" ? "课程内容未配置。" : "Content not configured."}</div>
+            <div className="p-6 text-white/60">
+              {locale === "zh" ? "课程内容未配置。" : "Content not configured."}
+            </div>
           )}
         </div>
       </main>
@@ -164,7 +184,7 @@ export function CoursePlayerClient({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           className="mt-3 flex-1 min-h-0 w-full rounded-2xl bg-white/5 border border-white/10 px-3 py-2 text-white/85 text-sm"
-          placeholder={locale === "zh" ? "写下：叙事/关键位/证伪点/执行…" : "Write: context/levels/invalidation/execution…"}
+          placeholder={locale === "zh" ? "记录关键点…" : "Write notes…"}
         />
         {error ? (
           <div className="mt-3 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
@@ -181,7 +201,7 @@ export function CoursePlayerClient({
             {locale === "zh" ? "保存笔记" : "Save"}
           </button>
           <a className="ml-auto text-sm text-white/60 hover:text-white" href={`/${locale}/system/files`}>
-            {locale === "zh" ? "查看资料" : "Files"}
+            {locale === "zh" ? "查看文件" : "Files"}
           </a>
         </div>
       </aside>

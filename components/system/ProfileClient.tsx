@@ -2,6 +2,8 @@
 
 import React from "react";
 
+import { isStrongSystemPassword } from "@/lib/system/passwordPolicy";
+
 type Me = {
   ok: boolean;
   user?: {
@@ -65,6 +67,15 @@ export function ProfileClient({ locale }: { locale: "zh" | "en" }) {
 
   const changePassword = async () => {
     setError(null);
+    if (!isStrongSystemPassword(newPassword)) {
+      setError(
+        locale === "zh"
+          ? "新密码必须包含：大写+小写+数字+特殊字符，长度 8-64"
+          : "Password must include upper/lower/digit/special and be 8-64 chars."
+      );
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch("/api/system/auth/change-password", {
@@ -82,6 +93,8 @@ export function ProfileClient({ locale }: { locale: "zh" | "en" }) {
       setSaving(false);
     }
   };
+
+  const newOk = newPassword ? isStrongSystemPassword(newPassword) : false;
 
   return (
     <div className="space-y-6 max-w-[900px]">
@@ -118,9 +131,7 @@ export function ProfileClient({ locale }: { locale: "zh" | "en" }) {
                 className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white/85 text-sm"
               />
             </div>
-            <div className="text-xs text-white/50">
-              {locale === "zh" ? "邮箱：" : "Email: "} {me.user?.email || "-"}
-            </div>
+            <div className="text-xs text-white/50">{locale === "zh" ? "邮箱：" : "Email: "} {me.user?.email || "-"}</div>
             <button
               type="button"
               disabled={saving}
@@ -148,19 +159,24 @@ export function ProfileClient({ locale }: { locale: "zh" | "en" }) {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white/85 text-sm"
+                className={[
+                  "w-full rounded-xl bg-white/5 border px-3 py-2 text-white/85 text-sm",
+                  newPassword && !newOk ? "border-rose-400/30" : "border-white/10"
+                ].join(" ")}
               />
             </div>
             <button
               type="button"
-              disabled={saving || !currentPassword.trim() || !newPassword.trim()}
+              disabled={saving || !currentPassword.trim() || !newOk}
               onClick={changePassword}
               className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15 disabled:opacity-50"
             >
               {locale === "zh" ? "更新密码" : "Update password"}
             </button>
             <div className="text-xs text-white/50">
-              {locale === "zh" ? "建议使用 8 位以上强密码。" : "Use a strong password (8+ chars)."}
+              {locale === "zh"
+                ? "规则：大写+小写+数字+特殊字符，长度 8-64"
+                : "Rule: upper+lower+digit+special, 8-64 chars."}
             </div>
           </div>
         </div>
@@ -174,3 +190,4 @@ export function ProfileClient({ locale }: { locale: "zh" | "en" }) {
     </div>
   );
 }
+

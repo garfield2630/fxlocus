@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getSystemAuth } from "@/lib/system/auth";
+import { requireAdmin } from "@/lib/system/guard";
 import { hashPassword } from "@/lib/system/password";
+import { isStrongSystemPassword } from "@/lib/system/passwordPolicy";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const Body = z.object({
   fullName: z.string().min(1).max(120),
@@ -20,12 +22,21 @@ function noStoreJson(payload: unknown, status = 200) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await getSystemAuth();
-  if (!auth.ok) return noStoreJson({ ok: false, error: auth.reason }, 401);
-  if (auth.user.role !== "admin") return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
+  let adminUserId = "";
+  try {
+    const ctx = await requireAdmin();
+    adminUserId = ctx.user.id;
+  } catch (e: any) {
+    const code = String(e?.code || "UNAUTHORIZED");
+    const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
+    return noStoreJson({ ok: false, error: code }, status);
+  }
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return noStoreJson({ ok: false, error: "INVALID_BODY" }, 400);
+  if (!isStrongSystemPassword(parsed.data.initialPassword)) {
+    return noStoreJson({ ok: false, error: "WEAK_PASSWORD" }, 400);
+  }
 
   const admin = supabaseAdmin();
   const now = new Date().toISOString();
@@ -46,6 +57,9 @@ export async function POST(req: NextRequest) {
       must_change_password: true,
       default_open_courses: parsed.data.defaultOpenCourses,
       created_at: now,
+      password_updated_at: now,
+      password_updated_by: adminUserId,
+      password_updated_reason: "admin_reset",
       updated_at: now
     })
     .select("id")
@@ -64,7 +78,7 @@ export async function POST(req: NextRequest) {
         status: "approved",
         requested_at: now,
         reviewed_at: now,
-        reviewed_by: auth.user.id,
+        reviewed_by: adminUserId,
         updated_at: now
       })),
       { onConflict: "user_id,course_id" }
@@ -72,11 +86,10 @@ export async function POST(req: NextRequest) {
   }
 
   await admin.from("system_login_logs").insert({
-    user_id: auth.user.id,
+    user_id: adminUserId,
     event: "user_created",
     meta: { createdUserId: created.id }
   });
 
   return noStoreJson({ ok: true, id: created.id });
 }
-
