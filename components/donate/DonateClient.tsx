@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -74,6 +74,7 @@ export function DonateClient() {
   const tCommon = useTranslations("common");
 
   const [now, setNow] = useState(() => new Date());
+  const [priceInfo, setPriceInfo] = useState<null | { price: number; nextUpdateAt: string }>(null);
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState<null | { id: string; createdAt: string }>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -113,20 +114,38 @@ export function DonateClient() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
+  const loadPrice = useCallback(async () => {
+    try {
+      const res = await fetch("/api/donate/price", { cache: "no-store" });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "price_failed");
+      setPriceInfo({ price: Number(json.price || 0), nextUpdateAt: String(json.nextUpdateAt || "") });
+    } catch {
+      // ignore and keep fallback price
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPrice();
+  }, [loadPrice]);
+
+  useEffect(() => {
+    if (!priceInfo?.nextUpdateAt) return;
+    const nextTs = new Date(priceInfo.nextUpdateAt).getTime();
+    const delay = Math.max(1000, nextTs - Date.now() + 1000);
+    const id = window.setTimeout(() => {
+      void loadPrice();
+    }, delay);
+    return () => window.clearTimeout(id);
+  }, [priceInfo?.nextUpdateAt, loadPrice]);
+
   const { price, countdown } = useMemo(() => {
-    const basePrice = 1299;
-    const dailyIncrease = 5;
-    const anchor = new Date(2025, 11, 20);
-    const today0 = startOfLocalDay(now);
-    const daysSince = Math.max(0, Math.floor((today0.getTime() - anchor.getTime()) / 86_400_000));
-    const computedPrice = basePrice + daysSince * dailyIncrease;
-
-    const nextMidnight = new Date(today0);
-    nextMidnight.setDate(nextMidnight.getDate() + 1);
-    const diffSeconds = Math.max(0, Math.floor((nextMidnight.getTime() - now.getTime()) / 1000));
-
-    return { price: computedPrice, countdown: formatHms(diffSeconds) };
-  }, [now]);
+    const fallbackPrice = 1680;
+    const nextUpdate = priceInfo?.nextUpdateAt ? new Date(priceInfo.nextUpdateAt) : null;
+    const nextTick = nextUpdate ? nextUpdate.getTime() : startOfLocalDay(now).getTime() + 86_400_000;
+    const diffSeconds = Math.max(0, Math.floor((nextTick - now.getTime()) / 1000));
+    return { price: priceInfo?.price || fallbackPrice, countdown: formatHms(diffSeconds) };
+  }, [now, priceInfo]);
 
   const instrumentsOptions = useMemo(
     () => [

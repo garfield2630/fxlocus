@@ -85,6 +85,7 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
         <div className="relative h-full w-full flex items-center justify-center px-4">
           <form
             onSubmit={submit}
+            autoComplete="off"
             className="relative w-full max-w-[420px] rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl"
           >
             <div className="text-white/90 text-lg font-semibold">
@@ -98,23 +99,25 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
                 <input
+                  name="system-identifier"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full rounded-2xl bg-white/5 border border-white/10 px-10 py-3 text-white/85 text-sm focus:outline-none focus:border-white/30"
                   placeholder={locale === "zh" ? "邮箱或手机号" : "Email or phone"}
-                  autoComplete="username"
+                  autoComplete="off"
                   required
                 />
               </div>
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
                 <input
+                  name="system-password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-2xl bg-white/5 border border-white/10 px-10 py-3 text-white/85 text-sm focus:outline-none focus:border-white/30"
                   placeholder={locale === "zh" ? "请输入密码" : "Password"}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   required
                 />
                 <button

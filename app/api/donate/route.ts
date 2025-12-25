@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 
 import { createSupabaseClient } from "@/lib/supabase";
+import { getDonatePrice } from "@/lib/donate/pricing";
 
 type RecordRow = {
   id: string;
@@ -116,10 +117,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Rate limited.", code: "rate_limited" }, { status: 429 });
     }
 
+    const priceInfo = await getDonatePrice();
     const payload = {
       type: "donate",
       ...body,
       email,
+      price: priceInfo.price,
+      priceDate: priceInfo.priceDate,
       receivedAt: new Date().toISOString()
     };
 
