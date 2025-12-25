@@ -1,10 +1,11 @@
+﻿export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 
 import { requireSystemUser } from "@/lib/system/guard";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
-
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+import { LADDER_IMAGE_URL, LADDER_REFRESH_MS } from "@/lib/system/ladderConfig";
 
 function json(payload: unknown, status = 200) {
   return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
@@ -15,39 +16,33 @@ export async function GET() {
     const { user } = await requireSystemUser();
     const admin = supabaseAdmin();
 
-    if (user.role !== "admin") {
-      const auth = await admin
-        .from("ladder_authorizations")
-        .select("status,enabled")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      const status = String(auth.data?.status || "none");
-      if (!auth.data || status !== "approved" || !auth.data.enabled) {
-        return json({ ok: true, status, url: null });
-      }
+    if (user.role === "admin") {
+      return json({
+        ok: true,
+        authorized: true,
+        status: "approved",
+        imageUrl: LADDER_IMAGE_URL,
+        refreshMs: LADDER_REFRESH_MS
+      });
     }
 
-    const snap = await admin
-      .from("ladder_snapshots")
-      .select("storage_bucket,storage_path,captured_at")
-      .order("captured_at", { ascending: false })
-      .limit(1)
+    const { data: row, error } = await admin
+      .from("ladder_authorizations")
+      .select("status")
+      .eq("user_id", user.id)
       .maybeSingle();
 
-    if (!snap.data) return json({ ok: true, status: "approved", url: null });
+    if (error) return json({ ok: false, error: error.message }, 500);
 
-    const signed = await admin.storage
-      .from(snap.data.storage_bucket)
-      .createSignedUrl(snap.data.storage_path, 60);
-
-    if (signed.error) return json({ ok: false, error: signed.error.message }, 500);
+    const status = String(row?.status || "none");
+    const authorized = status === "approved";
 
     return json({
       ok: true,
-      status: "approved",
-      url: signed.data.signedUrl,
-      captured_at: snap.data.captured_at
+      authorized,
+      status,
+      imageUrl: authorized ? LADDER_IMAGE_URL : null,
+      refreshMs: LADDER_REFRESH_MS
     });
   } catch (e: any) {
     const code = String(e?.code || "UNAUTHORIZED");
@@ -55,4 +50,3 @@ export async function GET() {
     return json({ ok: false, error: code }, status);
   }
 }
-

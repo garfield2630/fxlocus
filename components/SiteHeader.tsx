@@ -76,7 +76,7 @@ export function SiteHeader() {
       { key: "markets", href: "/markets" },
       { key: "news", href: "/news" },
       { key: "tools", href: "/tools" },
-      { key: "system", href: "/system" },
+      { key: "system", href: "/system/login" },
       { key: "donate", href: "/donate" },
       { key: "about", href: "/about" },
       { key: "contact", href: "/contact" }
@@ -115,7 +115,8 @@ export function SiteHeader() {
 
         <nav className="hidden flex-1 items-center justify-center gap-1 text-sm xl:flex">
           {navItems.map((item) => {
-            const active = isNavActive(pathname, item.href);
+            const active =
+              item.key === "system" ? isNavActive(pathname, "/system") : isNavActive(pathname, item.href);
             return (
               <Link
                 key={item.key}
@@ -159,7 +160,8 @@ export function SiteHeader() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               {navItems.map((item) => {
-                const active = isNavActive(pathname, item.href);
+                const active =
+                  item.key === "system" ? isNavActive(pathname, "/system") : isNavActive(pathname, item.href);
                 return (
                   <Link
                     key={item.key}

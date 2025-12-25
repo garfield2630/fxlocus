@@ -7,6 +7,27 @@ import { randomUUID } from "crypto";
 import { requireAdmin } from "@/lib/system/guard";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
+function safeSegment(input: string) {
+  const s = (input || "").trim().toLowerCase();
+  const cleaned = s.replace(/[^a-z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  return cleaned || "misc";
+}
+
+function safeFileName(name: string) {
+  const base = (name || "").trim();
+  const idx = base.lastIndexOf(".");
+  const ext = idx >= 0 ? base.slice(idx).toLowerCase().replace(/[^a-z0-9.]/g, "") : "";
+  const stem = idx >= 0 ? base.slice(0, idx) : base;
+
+  const safeStem = stem
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return (safeStem || "file") + (ext || "");
+}
+
 export async function POST(req: Request) {
   try {
     const { user } = await requireAdmin();
@@ -25,9 +46,13 @@ export async function POST(req: Request) {
     // Bucket name must match Supabase Storage.
     const bucket = "fxlocus_files";
 
-    const safeName = (file.name || "upload.bin").replace(/[^\w.\-()+\s]/g, "_");
+    const folder = safeSegment(String(form.get("folder") || category));
+    const safeName = safeFileName(file.name || "upload.bin");
     const finalName = displayName.trim() ? displayName.trim() : safeName;
-    const path = `${category}/${Date.now()}-${randomUUID()}-${safeName}`;
+    const path = `${folder}/${Date.now()}-${randomUUID()}-${safeName}`;
+    if (path.startsWith("/") || path.includes("..") || path.includes("//")) {
+      return NextResponse.json({ ok: false, error: "INVALID_KEY" }, { status: 400 });
+    }
 
     const buf = await file.arrayBuffer();
 
@@ -44,7 +69,7 @@ export async function POST(req: Request) {
     const ins = await admin
       .from("files")
       .insert({
-        category,
+        category: folder,
         name: finalName,
         description: description.trim() || null,
         storage_bucket: bucket,
