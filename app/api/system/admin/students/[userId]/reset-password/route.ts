@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/system/guard";
+import { isSuperAdmin, type SystemRole } from "@/lib/system/roles";
 import { hashPassword } from "@/lib/system/password";
 import { isStrongSystemPassword } from "@/lib/system/passwordPolicy";
 import { getIpFromHeaders, getUserAgent, parseDevice } from "@/lib/system/requestMeta";
@@ -43,9 +44,11 @@ export async function POST(req: NextRequest, ctx: { params: { userId: string } }
   const device = parseDevice(ua);
 
   let adminUserId = "";
+  let adminRole: SystemRole | null = null;
   try {
     const { user } = await requireAdmin();
     adminUserId = user.id;
+    adminRole = user.role;
   } catch (e: any) {
     const code = String(e?.code || "UNAUTHORIZED");
     const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
@@ -66,6 +69,16 @@ export async function POST(req: NextRequest, ctx: { params: { userId: string } }
   const passwordHash = await hashPassword(nextPassword);
   const admin = supabaseAdmin();
   const now = new Date().toISOString();
+
+  const { data: target, error: targetErr } = await admin
+    .from("system_users")
+    .select("id,role")
+    .eq("id", userId)
+    .maybeSingle();
+  if (targetErr || !target) return noStoreJson({ ok: false, error: "NOT_FOUND" }, 404);
+  if (!adminRole || (!isSuperAdmin(adminRole) && target.role !== "student")) {
+    return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
+  }
 
   const { error } = await admin
     .from("system_users")

@@ -3,9 +3,10 @@
 import React from "react";
 
 import { AdminFilesClient } from "@/components/system/admin/AdminFilesClient";
+import { isAdminRole, type SystemRole } from "@/lib/system/roles";
 
 type MeResponse =
-  | { ok: true; user: { role: "admin" | "student" } }
+  | { ok: true; user: { role: SystemRole } }
   | { ok: false; error: string };
 
 type FileItem = {
@@ -22,7 +23,7 @@ type FileItem = {
 };
 
 export function FilesClient({ locale }: { locale: "zh" | "en" }) {
-  const [role, setRole] = React.useState<"admin" | "student" | null>(null);
+  const [role, setRole] = React.useState<SystemRole | null>(null);
   const [items, setItems] = React.useState<FileItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -48,7 +49,7 @@ export function FilesClient({ locale }: { locale: "zh" | "en" }) {
         const nextRole = meJson.user.role;
         setRole(nextRole);
 
-        if (nextRole === "admin") {
+        if (isAdminRole(nextRole)) {
           setLoading(false);
           return;
         }
@@ -90,7 +91,7 @@ export function FilesClient({ locale }: { locale: "zh" | "en" }) {
     await loadFiles();
   };
 
-  if (role === "admin") return <AdminFilesClient locale={locale} />;
+  if (role && isAdminRole(role)) return <AdminFilesClient locale={locale} />;
 
   return (
     <div className="space-y-6">

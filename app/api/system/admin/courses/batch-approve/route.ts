@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/system/guard";
@@ -52,8 +52,7 @@ export async function POST(req: NextRequest) {
       status: "approved",
       reviewed_at: now,
       reviewed_by: adminUserId,
-      rejection_reason: null,
-      updated_at: now
+      rejection_reason: null
     })
     .eq("status", "requested");
 

@@ -1,6 +1,7 @@
 import { unstable_noStore } from "next/cache";
 
 import { getSystemAuth } from "@/lib/system/auth";
+import { isAdminRole } from "@/lib/system/roles";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 import { CoursesClient } from "@/components/system/CoursesClient";
 import { AdminCourseAccessClient } from "@/components/system/admin/AdminCourseAccessClient";
@@ -14,7 +15,7 @@ export default async function CoursesPage({ params }: { params: { locale: "zh" |
   const auth = await getSystemAuth();
   if (!auth.ok) return null;
 
-  if (auth.user.role === "admin") {
+  if (isAdminRole(auth.user.role)) {
     return <AdminCourseAccessClient locale={locale} />;
   }
 

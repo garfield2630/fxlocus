@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getIpFromHeaders, getUserAgent } from "@/lib/system/requestMeta";
 import { getSystemAuth } from "@/lib/system/auth";
+import { isAdminRole } from "@/lib/system/roles";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest, ctx: { params: { fileId: string } })
 
   if (fileErr || !file) return noStoreJson({ ok: false, error: "NOT_FOUND" }, 404);
 
-  if (auth.user.role !== "admin") {
+  if (!isAdminRole(auth.user.role)) {
     const { data: classRows } = await admin
       .from("system_class_members")
       .select("class_id")

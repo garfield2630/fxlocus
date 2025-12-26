@@ -3,8 +3,10 @@
 import React from "react";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 
+import { isAdminRole } from "@/lib/system/roles";
+
 type LoginResponse =
-  | { ok: true; user: { id: string; full_name: string; role: "admin" | "student" } }
+  | { ok: true; user: { id: string; full_name: string; role: "admin" | "student" | "super_admin" } }
   | { ok: false; error: string };
 
 export default function SystemLoginPage({ params }: { params: { locale: "zh" | "en" } }) {
@@ -52,10 +54,9 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
         return;
       }
 
-      const next =
-        json.user.role === "admin"
-          ? `/${locale}/system/admin`
-          : `/${locale}/system/dashboard`;
+      const next = isAdminRole(json.user.role)
+        ? `/${locale}/system/admin`
+        : `/${locale}/system/dashboard`;
       window.location.href = next;
     } catch (e: any) {
       setError(e?.message || (locale === "zh" ? "网络异常，请稍后重试" : "Network error."));

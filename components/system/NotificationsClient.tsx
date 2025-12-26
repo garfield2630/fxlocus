@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 
@@ -14,16 +14,35 @@ export function NotificationsClient({ locale }: { locale: "zh" | "en" }) {
   const [items, setItems] = React.useState<NotificationItem[]>([]);
   const [loading, setLoading] = React.useState(true);
 
-  const load = React.useCallback(async () => {
-    setLoading(true);
+  const load = React.useCallback(async (withSpinner = false) => {
+    if (withSpinner) setLoading(true);
     const res = await fetch("/api/system/notifications/list", { cache: "no-store" });
     const json = await res.json().catch(() => null);
     setItems(Array.isArray(json?.items) ? json.items : []);
-    setLoading(false);
+    if (withSpinner) setLoading(false);
   }, []);
 
   React.useEffect(() => {
-    load();
+    let alive = true;
+    const refresh = async () => {
+      if (!alive) return;
+      await load();
+    };
+
+    load(true);
+    const id = window.setInterval(refresh, 15_000);
+    const onFocus = () => {
+      if (!document.hidden) refresh();
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
   }, [load]);
 
   const markRead = async (id: string) => {
@@ -39,7 +58,7 @@ export function NotificationsClient({ locale }: { locale: "zh" | "en" }) {
 
       {loading ? (
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/60">
-          {locale === "zh" ? "加载中…" : "Loading…"}
+          {locale === "zh" ? "加载中..." : "Loading..."}
         </div>
       ) : null}
 
@@ -78,4 +97,3 @@ export function NotificationsClient({ locale }: { locale: "zh" | "en" }) {
     </div>
   );
 }
-

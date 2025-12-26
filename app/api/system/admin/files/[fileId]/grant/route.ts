@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getSystemAuth } from "@/lib/system/auth";
+import { isAdminRole } from "@/lib/system/roles";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -18,7 +19,7 @@ function noStoreJson(payload: unknown, status = 200) {
 export async function POST(req: NextRequest, ctx: { params: { fileId: string } }) {
   const auth = await getSystemAuth();
   if (!auth.ok) return noStoreJson({ ok: false, error: auth.reason }, 401);
-  if (auth.user.role !== "admin") return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
+  if (!isAdminRole(auth.user.role)) return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
 
   const fileId = ctx.params.fileId;
   if (!fileId) return noStoreJson({ ok: false, error: "INVALID_FILE" }, 400);

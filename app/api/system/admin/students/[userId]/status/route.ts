@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getIpFromHeaders, getUserAgent, parseDevice } from "@/lib/system/requestMeta";
 import { getSystemAuth } from "@/lib/system/auth";
+import { isAdminRole, isSuperAdmin } from "@/lib/system/roles";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -18,7 +19,7 @@ function noStoreJson(payload: unknown, status = 200) {
 export async function POST(req: NextRequest, ctx: { params: { userId: string } }) {
   const auth = await getSystemAuth();
   if (!auth.ok) return noStoreJson({ ok: false, error: auth.reason }, 401);
-  if (auth.user.role !== "admin") return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
+  if (!isAdminRole(auth.user.role)) return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
 
   const userId = ctx.params.userId;
   if (!userId) return noStoreJson({ ok: false, error: "INVALID_USER" }, 400);
@@ -28,6 +29,16 @@ export async function POST(req: NextRequest, ctx: { params: { userId: string } }
 
   const admin = supabaseAdmin();
   const now = new Date().toISOString();
+
+  const { data: target, error: targetErr } = await admin
+    .from("system_users")
+    .select("id,role")
+    .eq("id", userId)
+    .maybeSingle();
+  if (targetErr || !target) return noStoreJson({ ok: false, error: "NOT_FOUND" }, 404);
+  if (!isSuperAdmin(auth.user.role) && target.role !== "student") {
+    return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
+  }
 
   const { error } = await admin
     .from("system_users")
@@ -57,4 +68,3 @@ export async function POST(req: NextRequest, ctx: { params: { userId: string } }
 
   return noStoreJson({ ok: true });
 }
-

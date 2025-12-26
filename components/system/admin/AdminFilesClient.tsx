@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import React from "react";
+import { UploadCloud } from "lucide-react";
 
 type FileRow = {
   id: string;
@@ -41,6 +42,11 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
   const [file, setFile] = React.useState<File | null>(null);
 
   const [grantUserId, setGrantUserId] = React.useState<Record<string, string>>({});
+  const uploadRef = React.useRef<HTMLFormElement | null>(null);
+
+  const jumpToUpload = () => {
+    uploadRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -114,13 +120,18 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
         </div>
         <div className="mt-2 text-white/60 text-sm">
           {locale === "zh"
-            ? "上传课程资料并授权给学员（按用户）。"
-            : "Upload files and grant access to students (by user)."}
+            ? "上传课程资料并授权给学员（按 user_id 授权）。"
+            : "Upload files and grant access to students (by user_id)."}
         </div>
       </div>
 
-      <form onSubmit={upload} className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-3">
-        <div className="text-white/85 font-semibold">{locale === "zh" ? "上传文件" : "Upload"}</div>
+      <form ref={uploadRef} onSubmit={upload} className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-white/85 font-semibold">{locale === "zh" ? "上传文件" : "Upload"}</div>
+          <div className="text-xs text-white/50">
+            {locale === "zh" ? "支持 PDF/图片/压缩包等" : "PDF / image / archive supported"}
+          </div>
+        </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <input
             value={uploadForm.category}
@@ -152,7 +163,7 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
           disabled={uploading || !file}
           className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15 disabled:opacity-50"
         >
-          {uploading ? (locale === "zh" ? "上传中…" : "Uploading…") : locale === "zh" ? "上传" : "Upload"}
+          {uploading ? (locale === "zh" ? "上传中..." : "Uploading...") : locale === "zh" ? "上传" : "Upload"}
         </button>
       </form>
 
@@ -163,16 +174,42 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
       ) : null}
 
       <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
-        <div className="px-6 py-4 border-b border-white/10 text-white/85 font-semibold">
-          {locale === "zh" ? "文件列表" : "Files"}
+        <div className="px-6 py-4 border-b border-white/10 text-white/85 font-semibold flex items-center gap-2">
+          <span>{locale === "zh" ? "文件列表" : "Files"}</span>
+          <button
+            type="button"
+            onClick={jumpToUpload}
+            className="ml-auto px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:bg-white/10"
+          >
+            {locale === "zh" ? "跳到上传" : "Jump to upload"}
+          </button>
         </div>
 
         {loading ? (
-          <div className="p-6 text-white/60">{locale === "zh" ? "加载中…" : "Loading…"}</div>
+          <div className="p-6 text-white/60">{locale === "zh" ? "加载中..." : "Loading..."}</div>
         ) : null}
 
         {!loading && !items.length ? (
-          <div className="p-6 text-white/60">{locale === "zh" ? "暂无文件" : "No files"}</div>
+          <div className="p-6">
+            <div className="rounded-3xl border border-dashed border-white/15 bg-white/5 p-10 text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+                <UploadCloud className="h-5 w-5 text-white/70" />
+              </div>
+              <div className="text-white/80 font-semibold">
+                {locale === "zh" ? "还没有上传文件" : "No files yet"}
+              </div>
+              <div className="mt-2 text-sm text-white/60">
+                {locale === "zh" ? "点击按钮前往上传" : "Click to upload your first file"}
+              </div>
+              <button
+                type="button"
+                onClick={jumpToUpload}
+                className="mt-4 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15"
+              >
+                {locale === "zh" ? "上传文件" : "Upload file"}
+              </button>
+            </div>
+          </div>
         ) : null}
 
         <div className="divide-y divide-white/10">
@@ -203,7 +240,7 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
                 </button>
               </div>
               <div className="mt-2 text-xs text-white/40">
-                {locale === "zh" ? "storage:" : "storage:"} {f.storage_bucket}/{f.storage_path}
+                storage: {f.storage_bucket}/{f.storage_path}
               </div>
             </div>
           ))}

@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { ChevronDown } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { Link, usePathname } from "@/i18n/navigation";
@@ -21,6 +22,13 @@ function isNavActive(pathname: string, href: string) {
   if (target === "/") return current === "/";
   return current === target || current.startsWith(`${target}/`);
 }
+
+type DropdownItem = {
+  key: string;
+  href: string;
+  label: string;
+  desc: string;
+};
 
 function LocaleSwitcher() {
   const tCommon = useTranslations("common");
@@ -58,30 +66,165 @@ function LocaleSwitcher() {
   );
 }
 
+function NavDropdown({
+  label,
+  items,
+  active,
+  open,
+  onOpen,
+  onClose
+}: {
+  label: string;
+  items: DropdownItem[];
+  active: boolean;
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="relative" onMouseEnter={onOpen} onMouseLeave={onClose}>
+      <button
+        type="button"
+        onClick={() => (open ? onClose() : onOpen())}
+        className={[
+          "inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm transition-colors",
+          active || open
+            ? "bg-white/10 text-slate-50"
+            : "text-slate-200/70 hover:bg-white/5 hover:text-slate-50"
+        ].join(" ")}
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
+        <span>{label}</span>
+        <ChevronDown className={["h-4 w-4 transition-transform", open ? "rotate-180" : ""].join(" ")} />
+      </button>
+
+      {open ? (
+        <div className="absolute left-1/2 top-full z-40 mt-3 w-[420px] -translate-x-1/2 rounded-3xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl backdrop-blur">
+          <div className="grid gap-2">
+            {items.map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-sky-400/40 hover:bg-white/10"
+              >
+                <div className="text-sm font-semibold text-slate-50">{item.label}</div>
+                <div className="mt-1 text-xs text-slate-200/70">{item.desc}</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function SiteHeader() {
   const tNav = useTranslations("nav");
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<"courses" | "official" | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const navItems = useMemo(
+  useEffect(() => {
+    setOpenMenu(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  const scheduleClose = () => {
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(() => {
+      setOpenMenu(null);
+      closeTimerRef.current = null;
+    }, 160);
+  };
+
+  const openDropdown = (key: "courses" | "official") => {
+    clearCloseTimer();
+    setOpenMenu(key);
+  };
+
+  const navLinks = useMemo(
     () => [
       { key: "home", href: "/" },
       { key: "framework", href: "/framework" },
-      { key: "programs", href: "/programs" },
-      { key: "insights", href: "/insights" },
-      { key: "videos", href: "/videos" },
-      { key: "courses", href: "/courses" },
       { key: "markets", href: "/markets" },
-      { key: "news", href: "/news" },
-      { key: "tools", href: "/tools" },
-      { key: "system", href: "/system/login" },
+      { key: "system", href: "/system/login", activePath: "/system" },
       { key: "donate", href: "/donate" },
-      { key: "about", href: "/about" },
       { key: "contact", href: "/contact" }
     ],
     []
+  );
+
+  const courseMenu = useMemo<DropdownItem[]>(
+    () => [
+      {
+        key: "programs",
+        href: "/programs",
+        label: tNav("programs"),
+        desc: locale === "zh" ? "体系课程与服务总览" : "Programs and services overview"
+      },
+      {
+        key: "insights",
+        href: "/insights",
+        label: tNav("insights"),
+        desc: locale === "zh" ? "训练导向的思想文章" : "Insight articles for training"
+      },
+      {
+        key: "videos",
+        href: "/videos",
+        label: tNav("videos"),
+        desc: locale === "zh" ? "短视频与训练作业" : "Short videos and tasks"
+      },
+      {
+        key: "courses",
+        href: "/courses",
+        label: tNav("courses"),
+        desc: locale === "zh" ? "结构化课节与进度" : "Structured lessons and progress"
+      }
+    ],
+    [locale, tNav]
+  );
+
+  const officialMenu = useMemo<DropdownItem[]>(
+    () => [
+      {
+        key: "news",
+        href: "/news",
+        label: tNav("news"),
+        desc: locale === "zh" ? "官方资讯与公告" : "News and announcements"
+      },
+      {
+        key: "tools",
+        href: "/tools",
+        label: tNav("tools"),
+        desc: locale === "zh" ? "交易工具与计算器" : "Trading tools and calculators"
+      },
+      {
+        key: "about",
+        href: "/about",
+        label: tNav("about"),
+        desc: locale === "zh" ? "关于我们与理念" : "About the team and approach"
+      }
+    ],
+    [locale, tNav]
   );
 
   const brand = locale === "zh" ? tCommon("brandCn") : tCommon("brandEn");
@@ -114,9 +257,8 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden flex-1 items-center justify-center gap-1 text-sm xl:flex">
-          {navItems.map((item) => {
-            const active =
-              item.key === "system" ? isNavActive(pathname, "/system") : isNavActive(pathname, item.href);
+          {navLinks.map((item) => {
+            const active = isNavActive(pathname, item.activePath || item.href);
             return (
               <Link
                 key={item.key}
@@ -131,6 +273,24 @@ export function SiteHeader() {
               </Link>
             );
           })}
+
+          <NavDropdown
+            label={tNav("programs")}
+            items={courseMenu}
+            active={courseMenu.some((item) => isNavActive(pathname, item.href))}
+            open={openMenu === "courses"}
+            onOpen={() => openDropdown("courses")}
+            onClose={scheduleClose}
+          />
+
+          <NavDropdown
+            label={tNav("official")}
+            items={officialMenu}
+            active={officialMenu.some((item) => isNavActive(pathname, item.href))}
+            open={openMenu === "official"}
+            onOpen={() => openDropdown("official")}
+            onClose={scheduleClose}
+          />
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-3">
@@ -151,17 +311,17 @@ export function SiteHeader() {
 
       {mobileOpen ? (
         <div className="border-t border-white/10 bg-slate-950/70 backdrop-blur xl:hidden">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-4">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4">
             <div className="flex justify-between">
               <span className="text-xs font-semibold tracking-[0.16em] text-slate-200/60">
                 {tCommon("ui.nav")}
               </span>
               <LocaleSwitcher />
             </div>
+
             <div className="grid grid-cols-2 gap-2">
-              {navItems.map((item) => {
-                const active =
-                  item.key === "system" ? isNavActive(pathname, "/system") : isNavActive(pathname, item.href);
+              {navLinks.map((item) => {
+                const active = isNavActive(pathname, item.activePath || item.href);
                 return (
                   <Link
                     key={item.key}
@@ -177,6 +337,56 @@ export function SiteHeader() {
                   </Link>
                 );
               })}
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs font-semibold tracking-[0.16em] text-slate-200/60">
+                {tNav("programs")}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {courseMenu.map((item) => {
+                  const active = isNavActive(pathname, item.href);
+                  return (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      className={[
+                        "rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm transition-colors",
+                        active ? "border-sky-400/30 bg-white/10 text-slate-50" : "text-slate-100/90 hover:bg-white/10"
+                      ].join(" ")}
+                      onClick={() => setMobileOpen(false)}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs font-semibold tracking-[0.16em] text-slate-200/60">
+                {tNav("official")}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {officialMenu.map((item) => {
+                  const active = isNavActive(pathname, item.href);
+                  return (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      className={[
+                        "rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm transition-colors",
+                        active ? "border-sky-400/30 bg-white/10 text-slate-50" : "text-slate-100/90 hover:bg-white/10"
+                      ].join(" ")}
+                      onClick={() => setMobileOpen(false)}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

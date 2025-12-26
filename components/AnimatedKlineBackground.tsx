@@ -120,6 +120,8 @@ export function AnimatedKlineBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const nodesRef = useRef<Node[] | null>(null);
   const ripplesRef = useRef<Ripple[]>([]);
+  const frameRef = useRef<number | null>(null);
+  const runningRef = useRef(true);
 
   useEffect(() => {
     function resize() {
@@ -156,7 +158,6 @@ export function AnimatedKlineBackground() {
       nodesRef.current = nodes;
     }
 
-    let frameId: number;
     let start = performance.now();
     let lastNow = start;
 
@@ -231,19 +232,20 @@ export function AnimatedKlineBackground() {
     window.addEventListener("pointerdown", handlePointerDown, { passive: true });
 
     const render = (now: number) => {
+      if (!runningRef.current) return;
       const t = (now - start) / 1000;
       const dt = Math.min(0.05, (now - lastNow) / 1000);
       lastNow = now;
       const canvasEl = canvasRef.current;
       if (!canvasEl) {
-        frameId = requestAnimationFrame(render);
+        frameRef.current = requestAnimationFrame(render);
         return;
       }
 
       const w = canvasEl.clientWidth;
       const h = canvasEl.clientHeight;
       if (w === 0 || h === 0) {
-        frameId = requestAnimationFrame(render);
+        frameRef.current = requestAnimationFrame(render);
         return;
       }
 
@@ -262,15 +264,42 @@ export function AnimatedKlineBackground() {
 
       drawRipples(ctx, ripplesRef.current, now);
 
-      frameId = requestAnimationFrame(render);
+      frameRef.current = requestAnimationFrame(render);
     };
 
-    frameId = requestAnimationFrame(render);
+    const stop = () => {
+      runningRef.current = false;
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+    };
+
+    const startLoop = () => {
+      if (runningRef.current) return;
+      runningRef.current = true;
+      lastNow = performance.now();
+      frameRef.current = requestAnimationFrame(render);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) stop();
+      else startLoop();
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    if (!document.hidden) {
+      runningRef.current = true;
+      frameRef.current = requestAnimationFrame(render);
+    } else {
+      runningRef.current = false;
+    }
 
     return () => {
-      cancelAnimationFrame(frameId);
+      stop();
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 

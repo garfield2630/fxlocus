@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/system/guard";
@@ -42,8 +42,7 @@ export async function POST(req: Request) {
       status,
       reviewed_at: now,
       reviewed_by: adminUser.id,
-      rejection_reason: rejectionReason,
-      updated_at: now
+      rejection_reason: rejectionReason
     }));
 
     const up = await admin.from("course_access").upsert(rows as any, { onConflict: "user_id,course_id" });
@@ -58,11 +57,11 @@ export async function POST(req: Request) {
     const courseById = new Map((courses || []).map((c: any) => [c.id, c]));
     const notifications = parsed.data.items.map((it) => {
       const c = courseById.get(it.courseId);
+      const label = `#${it.courseId} ${c?.title_zh || c?.title_en || ""}`.trim();
       const title =
         status === "approved"
           ? "课程申请已通过 / Course approved"
           : "课程申请被拒绝 / Course rejected";
-      const label = `#${it.courseId} ${c?.title_zh || c?.title_en || ""}`.trim();
       const content =
         status === "approved"
           ? `你的课程申请已通过：${label}\n\nYour course request has been approved: ${label}`
@@ -86,4 +85,3 @@ export async function POST(req: Request) {
     return json({ ok: false, error: code }, status);
   }
 }
-

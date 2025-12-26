@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 
@@ -86,13 +86,13 @@ export function AdminCourseAccessClient({ locale }: { locale: "zh" | "en" }) {
   };
 
   const approveAll = async () => {
+    if (!items.length) return;
     setBusyKey("ALL");
     setError(null);
     try {
-      await fetch("/api/system/admin/courses/batch-approve", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({})
+      await reviewBulk({
+        items: items.map((it) => ({ userId: it.user_id, courseId: it.course_id })),
+        action: "approve"
       });
       await load();
     } catch (e: any) {
@@ -234,7 +234,7 @@ export function AdminCourseAccessClient({ locale }: { locale: "zh" | "en" }) {
         </div>
 
         {loading ? (
-          <div className="p-6 text-white/60">{locale === "zh" ? "加载中…" : "Loading…"}</div>
+          <div className="p-6 text-white/60">{locale === "zh" ? "加载中..." : "Loading..."}</div>
         ) : null}
 
         {!loading && !filtered.length ? (
@@ -311,7 +311,7 @@ export function AdminCourseAccessClient({ locale }: { locale: "zh" | "en" }) {
                 : "Select all"}
           </button>
           <span className="ml-auto">
-            {locale === "zh" ? "当前显示" : "Showing"} {filtered.length} ·{" "}
+            {locale === "zh" ? "当前显示" : "Showing"} {filtered.length} · {" "}
             {locale === "zh" ? "已选" : "Selected"} {selectedItems.length}
           </span>
         </div>
@@ -319,4 +319,3 @@ export function AdminCourseAccessClient({ locale }: { locale: "zh" | "en" }) {
     </div>
   );
 }
-

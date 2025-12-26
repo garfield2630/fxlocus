@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { supabaseAdmin } from "./supabaseAdmin";
 import { verifySystemJwt } from "./jwt";
+import { isAdminRole, type SystemRole } from "./roles";
 
 export const SYSTEM_COOKIE = "fxlocus_system_token";
 
@@ -13,7 +14,7 @@ export type SystemUser = {
   full_name: string;
   email: string | null;
   phone: string | null;
-  role: "admin" | "student";
+  role: SystemRole;
   status: "active" | "frozen";
   must_change_password: boolean;
   default_open_courses: number;
@@ -69,7 +70,7 @@ export async function requireSystemUser(
 
 export async function requireAdmin(locale: Locale) {
   const user = await requireSystemUser(locale);
-  if (user.role !== "admin") redirect(`/${locale}/system/403`);
+  if (!isAdminRole(user.role)) redirect(`/${locale}/system/403`);
   return user;
 }
 

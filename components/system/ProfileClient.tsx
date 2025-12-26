@@ -10,7 +10,7 @@ type Me = {
     full_name: string;
     email: string | null;
     phone: string | null;
-    role: "admin" | "student";
+    role: "admin" | "student" | "super_admin";
     status: "active" | "frozen";
   };
 };

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/system/guard";
@@ -87,8 +87,7 @@ export async function POST(req: NextRequest) {
 
     const payload: Record<string, unknown> = {
       reviewed_at: now,
-      reviewed_by: adminUserId,
-      updated_at: now
+      reviewed_by: adminUserId
     };
 
     if (parsed.data.action === "approve") {
@@ -135,8 +134,7 @@ export async function POST(req: NextRequest) {
       status,
       reviewed_at: now,
       reviewed_by: adminUserId,
-      rejection_reason: status === "rejected" ? reason : null,
-      updated_at: now
+      rejection_reason: status === "rejected" ? reason : null
     } as any);
     if (ins.error) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
     const nerr = await notify(parsedByUser.data.userId, parsedByUser.data.courseId, status as any, reason);
@@ -150,8 +148,7 @@ export async function POST(req: NextRequest) {
       status,
       reviewed_at: now,
       reviewed_by: adminUserId,
-      rejection_reason: status === "rejected" ? reason : null,
-      updated_at: now
+      rejection_reason: status === "rejected" ? reason : null
     })
     .eq("id", existing.id);
 

@@ -14,46 +14,6 @@ const RichTextEditor = dynamic(
 
 type Locale = "zh" | "en";
 
-type DonateApplication = {
-  id: string;
-  createdAt: string;
-  locale: Locale;
-  name: string;
-  email: string;
-  telegramWhatsApp?: string;
-  wechat?: string;
-  phone?: PhoneFieldValue;
-  countryRegion?: string; // legacy
-  tradingYears: string;
-  instruments: string[];
-  bottlenecks: string[];
-  weeklyFrequency: string;
-  whyJoin: string;
-  goal90d: string;
-  challenge: "yes" | "no";
-  thoughtsHtml: string;
-};
-
-async function fetchApplications(email: string): Promise<DonateApplication[]> {
-  if (!email.trim()) return [];
-  const res = await fetch(`/api/donate?email=${encodeURIComponent(email.trim())}`, {
-    cache: "no-store"
-  });
-  if (!res.ok) return [];
-  const json = await res.json();
-  return Array.isArray(json.items) ? (json.items as DonateApplication[]) : [];
-}
-
-function downloadJson(filename: string, data: unknown) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 function startOfLocalDay(d: Date) {
   const copy = new Date(d);
   copy.setHours(0, 0, 0, 0);
@@ -80,7 +40,6 @@ export function DonateClient() {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [website, setWebsite] = useState("");
   const [walletCopied, setWalletCopied] = useState(false);
-  const [lastEmail, setLastEmail] = useState("");
 
   const [form, setForm] = useState(() => ({
     name: "",
@@ -256,7 +215,6 @@ export function DonateClient() {
         return;
       }
 
-      setLastEmail(payload.email);
       setSubmitted({
         id: String(json.id || ""),
         createdAt: String(json.createdAt || new Date().toISOString())
@@ -264,16 +222,6 @@ export function DonateClient() {
     } catch {
       setGlobalError("Submission failed. Please try again.");
     }
-  };
-
-  const exportAll = async () => {
-    const email = (lastEmail || form.email).trim();
-    if (!email) {
-      setGlobalError("Please enter an email before export.");
-      return;
-    }
-    const data = await fetchApplications(email);
-    downloadJson(`fxlocus-donate-applications-${new Date().toISOString().slice(0, 10)}.json`, data);
   };
 
   const rulesItems = t.raw("rules.items") as unknown as string[];
@@ -310,14 +258,11 @@ export function DonateClient() {
               {countdown}
             </div>
           </div>
-          <div className="flex flex-col justify-between gap-6 md:items-end md:text-right">
+            <div className="flex flex-col justify-between gap-6 md:items-end md:text-right">
             <div className="text-sm text-slate-200/70">{t("pricing.dailyIncrease")}</div>
             <div className="flex flex-col gap-3 sm:flex-row md:justify-end">
               <Button variant="primary" className="rounded-full px-6 py-3" onClick={() => setOpen(true)}>
                 {t("cta.openForm")}
-              </Button>
-              <Button variant="secondary" className="rounded-full px-6 py-3" onClick={exportAll}>
-                {t("cta.export")}
               </Button>
             </div>
           </div>
@@ -390,11 +335,6 @@ export function DonateClient() {
                 </div>
                 <div className="text-xs text-slate-200/60">
                   {t("form.success.time", { time: new Date(submitted.createdAt).toLocaleString(locale) })}
-                </div>
-                <div className="pt-2">
-                  <Button variant="secondary" className="rounded-full px-6 py-3" onClick={exportAll}>
-                    {t("cta.export")}
-                  </Button>
                 </div>
               </div>
             ) : (

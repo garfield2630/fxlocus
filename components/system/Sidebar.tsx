@@ -25,6 +25,7 @@ import {
 
 import { Link } from "@/i18n/navigation";
 import type { SystemUser } from "@/lib/system/auth";
+import { isAdminRole } from "@/lib/system/roles";
 
 type NavItem = {
   href: string;
@@ -131,11 +132,19 @@ export function Sidebar({ locale, user }: { locale: "zh" | "en"; user: Pick<Syst
       }
     };
 
+    const onFocus = () => {
+      if (!document.hidden) load();
+    };
+
     load();
-    const id = window.setInterval(load, 30_000);
+    const id = window.setInterval(load, 15_000);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
     return () => {
       alive = false;
       window.clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
     };
   }, []);
 
@@ -211,7 +220,7 @@ export function Sidebar({ locale, user }: { locale: "zh" | "en"; user: Pick<Syst
           ))}
         </div>
 
-        {user.role === "admin" ? (
+        {isAdminRole(user.role) ? (
           <>
             <div className={["pt-2 text-xs text-white/40 px-2", collapsed ? "hidden" : ""].join(" ")}>
               {locale === "zh" ? "管理区" : "Admin"}

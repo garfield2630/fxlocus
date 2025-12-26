@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getSystemAuth } from "@/lib/system/auth";
+import { isAdminRole } from "@/lib/system/roles";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(50, Math.max(1, Number(req.nextUrl.searchParams.get("limit") || 20)));
 
   const admin = supabaseAdmin();
-  if (auth.user.role !== "admin") {
+  if (!isAdminRole(auth.user.role)) {
     const enabled = await userCanView(admin, auth.user.id);
     if (!enabled) return noStoreJson({ ok: true, items: [] });
   }

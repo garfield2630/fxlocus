@@ -1,11 +1,12 @@
 import { SignJWT, jwtVerify } from "jose";
 
 import { ENV } from "./env";
+import type { SystemRole } from "./roles";
 
 export type SystemJwtPayload = {
   sub: string; // user_id
   sid: string; // session_id
-  role: "admin" | "student";
+  role: SystemRole;
 };
 
 function secretKey() {
@@ -25,4 +26,3 @@ export async function verifySystemJwt(token: string) {
   const { payload } = await jwtVerify(token, secretKey());
   return payload as unknown as SystemJwtPayload & { exp: number; iat: number };
 }
-

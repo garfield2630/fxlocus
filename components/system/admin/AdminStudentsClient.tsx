@@ -3,12 +3,14 @@
 import React from "react";
 
 import { isStrongSystemPassword } from "@/lib/system/passwordPolicy";
+import type { SystemRole } from "@/lib/system/roles";
 
 type StudentRow = {
   id: string;
   full_name: string;
   email: string | null;
   phone: string | null;
+  role: SystemRole;
   status: "active" | "frozen";
   created_at?: string;
   last_login_at?: string | null;
@@ -93,6 +95,17 @@ export function AdminStudentsClient({ locale }: { locale: "zh" | "en" }) {
     } catch {
       // ignore
     }
+  };
+
+  const roleLabel = (role: SystemRole) => {
+    if (locale === "zh") {
+      if (role === "super_admin") return "超级管理员";
+      if (role === "admin") return "管理员";
+      return "学员";
+    }
+    if (role === "super_admin") return "Super Admin";
+    if (role === "admin") return "Admin";
+    return "Student";
   };
 
   const passwordOk = form.initialPassword ? isStrongSystemPassword(form.initialPassword) : false;
@@ -243,6 +256,13 @@ export function AdminStudentsClient({ locale }: { locale: "zh" | "en" }) {
                 {locale === "zh" ? "状态" : "Status"}:{" "}
                 <span className={row.status === "active" ? "text-emerald-300" : "text-rose-300"}>
                   {row.status}
+                </span>
+              </div>
+
+              <div className="text-xs text-white/50">
+                {locale === "zh" ? "角色" : "Role"}:{" "}
+                <span className={row.role === "student" ? "text-white/80" : "text-sky-200"}>
+                  {roleLabel(row.role)}
                 </span>
               </div>
 

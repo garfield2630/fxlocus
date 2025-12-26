@@ -1,11 +1,12 @@
 import { cookies } from "next/headers";
 
 import { SYSTEM_COOKIE } from "@/lib/system/auth";
+import { isAdminRole, isSuperAdmin, type SystemRole } from "@/lib/system/roles";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 import { verifySystemJwt } from "@/lib/system/jwt";
 
-export type SystemRole = "admin" | "student";
 export type SystemStatus = "active" | "frozen";
+export type { SystemRole };
 
 export type SystemUserSafe = {
   id: string;
@@ -78,7 +79,7 @@ export async function requireSystemUser() {
 
 export async function requireAdmin() {
   const ctx = await requireSystemUser();
-  if (ctx.user.role !== "admin") throw err("FORBIDDEN");
+  if (!isAdminRole(ctx.user.role)) throw err("FORBIDDEN");
   return ctx;
 }
 
@@ -88,3 +89,8 @@ export async function requireStudent() {
   return ctx;
 }
 
+export async function requireSuperAdmin() {
+  const ctx = await requireSystemUser();
+  if (!isSuperAdmin(ctx.user.role)) throw err("FORBIDDEN");
+  return ctx;
+}

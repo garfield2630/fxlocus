@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getSystemAuth } from "@/lib/system/auth";
+import { isAdminRole } from "@/lib/system/roles";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -17,7 +18,7 @@ function safeFilename(name: string) {
 export async function POST(req: NextRequest) {
   const auth = await getSystemAuth();
   if (!auth.ok) return noStoreJson({ ok: false, error: auth.reason }, 401);
-  if (auth.user.role !== "admin") return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
+  if (!isAdminRole(auth.user.role)) return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
 
   const form = await req.formData().catch(() => null);
   if (!form) return noStoreJson({ ok: false, error: "INVALID_FORM" }, 400);

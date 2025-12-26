@@ -43,8 +43,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "MISSING_FILE" }, { status: 400 });
     }
 
-    // Bucket name must match Supabase Storage.
-    const bucket = "fxlocus_files";
+    const bucketCandidates = [
+      process.env.SYSTEM_FILES_BUCKET,
+      "fxlocus_files",
+      "fxlocus-files"
+    ].filter(Boolean) as string[];
 
     const folder = safeSegment(String(form.get("folder") || category));
     const safeName = safeFileName(file.name || "upload.bin");
@@ -56,14 +59,28 @@ export async function POST(req: Request) {
 
     const buf = await file.arrayBuffer();
 
-    const up = await admin.storage.from(bucket).upload(path, buf, {
-      contentType: file.type || "application/octet-stream",
-      upsert: false
-    });
+    let bucketUsed = bucketCandidates[0] || "fxlocus_files";
+    let uploadError: { message: string } | null = null;
 
-    if (up.error) {
-      console.error("[files/upload] storage upload error:", up.error);
-      return NextResponse.json({ ok: false, error: up.error.message }, { status: 500 });
+    for (const candidate of bucketCandidates.length ? bucketCandidates : [bucketUsed]) {
+      const up = await admin.storage.from(candidate).upload(path, buf, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false
+      });
+
+      if (!up.error) {
+        bucketUsed = candidate;
+        uploadError = null;
+        break;
+      }
+
+      uploadError = up.error;
+      if (!/bucket/i.test(up.error.message)) break;
+    }
+
+    if (uploadError) {
+      console.error("[files/upload] storage upload error:", uploadError);
+      return NextResponse.json({ ok: false, error: uploadError.message }, { status: 500 });
     }
 
     const ins = await admin
@@ -72,7 +89,7 @@ export async function POST(req: Request) {
         category: folder,
         name: finalName,
         description: description.trim() || null,
-        storage_bucket: bucket,
+        storage_bucket: bucketUsed,
         storage_path: path,
         size_bytes: file.size,
         mime_type: file.type || null,

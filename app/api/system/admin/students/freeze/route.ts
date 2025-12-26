@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/system/guard";
+import { isSuperAdmin } from "@/lib/system/roles";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -12,7 +13,7 @@ function json(payload: unknown, status = 200) {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin();
+    const { user: adminUser } = await requireAdmin();
     const admin = supabaseAdmin();
     const body = await req.json().catch(() => null);
     const userId = String(body?.userId || "");
@@ -21,6 +22,15 @@ export async function POST(req: Request) {
     if (!userId) return json({ ok: false, error: "INVALID_BODY" }, 400);
 
     const now = new Date().toISOString();
+    const { data: target, error: targetErr } = await admin
+      .from("system_users")
+      .select("id,role")
+      .eq("id", userId)
+      .maybeSingle();
+    if (targetErr || !target) return json({ ok: false, error: "NOT_FOUND" }, 404);
+    if (!isSuperAdmin(adminUser.role) && target.role !== "student") {
+      return json({ ok: false, error: "FORBIDDEN" }, 403);
+    }
     const up = await admin
       .from("system_users")
       .update({ status: freeze ? "frozen" : "active", updated_at: now })
@@ -42,4 +52,3 @@ export async function POST(req: Request) {
     return json({ ok: false, error: code }, status);
   }
 }
-

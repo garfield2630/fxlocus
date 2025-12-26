@@ -3,9 +3,11 @@
 import React from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+import type { SystemRole } from "@/lib/system/roles";
+
 type Props = {
   locale: "zh" | "en";
-  user: { full_name: string; role: "admin" | "student" };
+  user: { full_name: string; role: SystemRole };
 };
 
 function swapLocale(pathname: string, nextLocale: "zh" | "en") {
@@ -36,13 +38,17 @@ export function Topbar({ locale, user }: Props) {
       <div className="text-white/80 text-sm">
         {user.full_name}
         <span className="ml-2 text-white/40 text-xs">
-          {user.role === "admin"
+          {user.role === "super_admin"
             ? locale === "zh"
-              ? "管理员"
-              : "Admin"
-            : locale === "zh"
-              ? "学员"
-              : "Student"}
+              ? "超级管理员"
+              : "Super Admin"
+            : user.role === "admin"
+              ? locale === "zh"
+                ? "管理员"
+                : "Admin"
+              : locale === "zh"
+                ? "学员"
+                : "Student"}
         </span>
       </div>
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/system/guard";
+import { isSuperAdmin, type SystemRole } from "@/lib/system/roles";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -11,8 +12,10 @@ function noStoreJson(payload: unknown, status = 200) {
 }
 
 export async function GET(_req: Request, ctx: { params: { userId: string } }) {
+  let adminRole: SystemRole | null = null;
   try {
-    await requireAdmin();
+    const { user } = await requireAdmin();
+    adminRole = user.role;
   } catch (e: any) {
     const code = String(e?.code || "UNAUTHORIZED");
     const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
@@ -36,6 +39,9 @@ export async function GET(_req: Request, ctx: { params: { userId: string } }) {
   ]);
 
   if (!user) return noStoreJson({ ok: false, error: "NOT_FOUND" }, 404);
+  if (!adminRole || (!isSuperAdmin(adminRole) && user.role !== "student")) {
+    return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
+  }
 
   return noStoreJson({ ok: true, user, access: access || [] });
 }

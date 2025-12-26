@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 
 import { requireSystemUser } from "@/lib/system/guard";
+import { isAdminRole } from "@/lib/system/roles";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 import { LADDER_IMAGE_URL, LADDER_REFRESH_MS } from "@/lib/system/ladderConfig";
 
@@ -16,7 +17,7 @@ export async function GET() {
     const { user } = await requireSystemUser();
     const admin = supabaseAdmin();
 
-    if (user.role === "admin") {
+    if (isAdminRole(user.role)) {
       return json({
         ok: true,
         authorized: true,

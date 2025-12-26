@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/system/guard";
+import { isSuperAdmin } from "@/lib/system/roles";
 import { hashPassword } from "@/lib/system/password";
 import { isStrongSystemPassword } from "@/lib/system/passwordPolicy";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
@@ -24,6 +25,15 @@ export async function POST(req: Request) {
     if (!isStrongSystemPassword(newPassword)) return json({ ok: false, error: "WEAK_PASSWORD" }, 400);
 
     const now = new Date().toISOString();
+    const { data: target, error: targetErr } = await admin
+      .from("system_users")
+      .select("id,role")
+      .eq("id", userId)
+      .maybeSingle();
+    if (targetErr || !target) return json({ ok: false, error: "NOT_FOUND" }, 404);
+    if (!isSuperAdmin(adminUser.role) && target.role !== "student") {
+      return json({ ok: false, error: "FORBIDDEN" }, 403);
+    }
     const passwordHash = await hashPassword(newPassword);
 
     const up = await admin
