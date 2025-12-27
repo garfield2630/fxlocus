@@ -88,17 +88,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const admin = createSupabaseAdminClient();
-    const { data: profile, error: pErr } = await admin
-      .from("profiles")
-      .select("id,email,full_name,role")
-      .eq("id", data.user.id)
-      .maybeSingle();
+    let profile: { id: string; email: string | null; role: string } | null = null;
+    let adminError: string | null = null;
 
-    if (pErr) {
-      console.error("profiles query error:", pErr);
-      await supabase.auth.signOut();
-      return json({ error: "Profile query failed", message: pErr.message }, 500);
+    try {
+      const admin = createSupabaseAdminClient();
+      const { data: adminProfile, error: adminErr } = await admin
+        .from("profiles")
+        .select("id,email,role")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      if (adminErr) {
+        adminError = adminErr.message;
+      } else {
+        profile = adminProfile as typeof profile;
+      }
+    } catch (e: any) {
+      adminError = e?.message ?? "ADMIN_PROFILE_QUERY_FAILED";
+    }
+
+    if (!profile) {
+      const { data: fallbackProfile, error: fallbackErr } = await supabase
+        .from("profiles")
+        .select("id,email,role")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      if (fallbackErr) {
+        console.error("profiles query error:", fallbackErr);
+        await supabase.auth.signOut();
+        return json(
+          { error: "Profile query failed", message: fallbackErr.message, adminError },
+          500
+        );
+      }
+
+      profile = fallbackProfile as typeof profile;
     }
 
     if (!profile) {
@@ -136,7 +161,7 @@ export async function POST(req: NextRequest) {
       user: {
         id: profile.id,
         email: profile.email,
-        full_name: profile.full_name ?? null,
+        full_name: null,
         role: profile.role
       }
     });
