@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import sanitizeHtml from "sanitize-html";
 
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { fetchRssItems } from "@/lib/news/rss";
 import { extractSymbolsHeuristic } from "@/lib/news/symbols";
 import { safeSlug } from "@/lib/news/normalize";
@@ -647,3 +647,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(payload, { status: 200 });
   }
 }
+

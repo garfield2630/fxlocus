@@ -1,7 +1,7 @@
-import Parser from "rss-parser";
+﻿import Parser from "rss-parser";
 import sanitizeHtml from "sanitize-html";
 
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 import { analyzeWithAI } from "./ai";
 import { hashText } from "./dedupe";
@@ -203,3 +203,4 @@ export async function ingestOnce() {
 
   return stats;
 }
+

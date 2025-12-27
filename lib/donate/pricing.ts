@@ -1,4 +1,6 @@
-import { createSupabaseClient } from "@/lib/supabase";
+import "server-only";
+
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const DONATE_PRICE_BASE = 1680;
 export const DONATE_DAILY_INCREASE = 5;
@@ -32,7 +34,7 @@ function dayFromKey(dateKey: string) {
 }
 
 export async function getDonatePrice() {
-  const supabase = createSupabaseClient();
+  const supabase = createSupabaseAdminClient();
   const todayKey = toDateKey(new Date());
   const today = dayFromKey(todayKey);
   const nextUpdateAt = new Date(today.getTime() + 86_400_000).toISOString();

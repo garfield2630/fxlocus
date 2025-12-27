@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
 import { fetchRssItems } from "@/lib/news/rss";
 import { extractSymbolsHeuristic } from "@/lib/news/symbols";
 import { safeSlug } from "@/lib/news/normalize";
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -277,3 +277,4 @@ export async function GET(req: NextRequest) {
     { status: 200 }
   );
 }
+

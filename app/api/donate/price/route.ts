@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { getDonatePrice } from "@/lib/donate/pricing";
 
+export const runtime = "nodejs";
+
 export async function GET() {
   try {
     const data = await getDonatePrice();

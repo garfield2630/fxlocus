@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -36,3 +36,4 @@ export async function PATCH(req: NextRequest) {
   if (error) return NextResponse.json({ ok: false }, { status: 400 });
   return NextResponse.json({ ok: true, item: data }, { status: 200 });
 }
+

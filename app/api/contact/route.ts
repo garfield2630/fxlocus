@@ -1,6 +1,8 @@
 ﻿import { NextResponse } from "next/server";
 
-import { createSupabaseClient } from "@/lib/supabase";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+export const runtime = "nodejs";
 
 function isValidEmail(value: unknown): value is string {
   if (typeof value !== "string") return false;
@@ -10,7 +12,7 @@ function isValidEmail(value: unknown): value is string {
 }
 
 async function insertRecord(payload: Record<string, unknown>) {
-  const supabase = createSupabaseClient();
+  const supabase = createSupabaseAdminClient();
   const content = JSON.stringify(payload);
   const email = typeof payload.email === "string" ? payload.email : undefined;
   const name = typeof payload.name === "string" ? payload.name : undefined;

@@ -1,9 +1,11 @@
 ﻿import { NextResponse } from "next/server";
 
-import { createSupabaseClient } from "@/lib/supabase";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+export const runtime = "nodejs";
 
 async function insertRecord(payload: Record<string, unknown>) {
-  const supabase = createSupabaseClient();
+  const supabase = createSupabaseAdminClient();
   const content = JSON.stringify(payload);
   const email = typeof payload.email === "string" ? payload.email : undefined;
   const baseInsert = {

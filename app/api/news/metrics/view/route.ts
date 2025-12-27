@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -47,3 +47,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, skipped: true }, { status: 200 });
   }
 }
+

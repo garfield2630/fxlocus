@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -27,3 +27,4 @@ export async function POST(req: NextRequest) {
   await sb.from("news_articles").update(payload).eq("id", articleId);
   return NextResponse.json({ ok: true }, { status: 200 });
 }
+

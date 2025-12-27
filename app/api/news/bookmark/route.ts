@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -28,3 +28,4 @@ export async function POST(req: NextRequest) {
     .upsert({ user_id: userId, article_id: articleId }, { onConflict: "user_id,article_id" });
   return NextResponse.json({ ok: true }, { status: 200 });
 }
+

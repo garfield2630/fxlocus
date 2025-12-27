@@ -1,7 +1,9 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 
-import { createSupabaseClient } from "@/lib/supabase";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getDonatePrice } from "@/lib/donate/pricing";
+
+export const runtime = "nodejs";
 
 type RecordRow = {
   id: string;
@@ -30,7 +32,7 @@ function parsePayload(row: RecordRow): Record<string, unknown> {
 }
 
 async function insertRecord(payload: Record<string, unknown>) {
-  const supabase = createSupabaseClient();
+  const supabase = createSupabaseAdminClient();
   const content = JSON.stringify(payload);
   const email = normalizeEmail(payload.email) || undefined;
   const name = typeof payload.name === "string" ? payload.name : undefined;
@@ -50,7 +52,7 @@ async function insertRecord(payload: Record<string, unknown>) {
 }
 
 async function hasRecentSubmission(email: string) {
-  const supabase = createSupabaseClient();
+  const supabase = createSupabaseAdminClient();
   const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
   const { data, error } = await supabase
@@ -72,7 +74,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createSupabaseClient();
+    const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from("records")
       .select("id, created_at, payload, content")

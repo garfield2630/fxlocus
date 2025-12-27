@@ -1,16 +1,32 @@
-import "server-only";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
-import { createClient } from "@supabase/supabase-js";
+function mustGetEnv(name: string) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing env: ${name}`);
+  return value;
+}
 
-export function supabaseAdmin() {
-  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export function createSupabaseServerClient() {
+  const url = mustGetEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const anonKey = mustGetEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
-  if (!url || !key) {
-    throw new Error("Missing Supabase env vars for server client.");
-  }
+  const cookieStore = cookies();
 
-  return createClient(url, key, {
-    auth: { persistSession: false }
+  return createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        try {
+          for (const { name, value, options } of cookiesToSet) {
+            cookieStore.set(name, value, options);
+          }
+        } catch {
+          // Server Components cannot set cookies. Middleware/Route Handlers can.
+        }
+      }
+    }
   });
 }
