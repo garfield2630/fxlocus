@@ -1,3 +1,4 @@
+import "server-only";
 import { createClient } from "@supabase/supabase-js";
 
 import { ENV } from "./env";
@@ -7,4 +8,3 @@ export function supabaseAdmin() {
     auth: { persistSession: false }
   });
 }
-

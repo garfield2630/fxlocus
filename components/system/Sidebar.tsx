@@ -9,17 +9,21 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
+  ClipboardList,
   FolderCog,
   FolderDown,
   Gauge,
+  HandHeart,
   ImageUp,
   LayoutDashboard,
   LogOut,
+  Mail,
   Settings,
   ShieldCheck,
   TrendingUp,
   UploadCloud,
   User,
+  UserCog,
   Users
 } from "lucide-react";
 
@@ -169,12 +173,22 @@ export function Sidebar({ locale, user }: { locale: "zh" | "en"; user: Pick<Syst
 
   const adminItems: NavItem[] = [
     { href: "/system/admin", zh: "管理概览", en: "Admin Home", icon: Gauge, exact: true },
+    ...(user.role === "super_admin"
+      ? ([{ href: "/system/admin/leaders", zh: "团队长管理", en: "Leader Management", icon: UserCog }] as NavItem[])
+      : []),
     { href: "/system/admin/students", zh: "学员管理", en: "Students", icon: Users },
     { href: "/system/admin/courses", zh: "课程审批", en: "Course Approvals", icon: ClipboardCheck },
     { href: "/system/admin/course-content", zh: "课程内容", en: "Course Content", icon: UploadCloud },
     { href: "/system/admin/files", zh: "文件库", en: "File Library", icon: FolderCog, exact: true },
     { href: "/system/admin/files/requests", zh: "文件权限审批", en: "File Access", icon: ShieldCheck },
     { href: "/system/admin/ladder", zh: "天梯管理", en: "Ladder Admin", icon: ImageUp },
+    ...(user.role === "super_admin"
+      ? ([
+          { href: "/system/admin/donations", zh: "捐赠管理", en: "Donations", icon: HandHeart },
+          { href: "/system/admin/enrollments", zh: "报名管理", en: "Enrollments", icon: ClipboardList },
+          { href: "/system/admin/contacts", zh: "联系管理", en: "Contacts", icon: Mail }
+        ] as NavItem[])
+      : []),
     { href: "/system/admin/reports", zh: "报表", en: "Reports", icon: BarChart3 },
     { href: "/system/admin/settings", zh: "设置", en: "Settings", icon: Settings }
   ];

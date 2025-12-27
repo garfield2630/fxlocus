@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/system/guard";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,10 +11,9 @@ function json(payload: unknown, status = 200) {
 
 export async function GET() {
   try {
-    await requireAdmin();
-    const admin = supabaseAdmin();
+    const { supabase } = await requireAdmin();
 
-    const q = await admin
+    const q = await supabase
       .from("course_access")
       .select("id,user_id,course_id,status,requested_at")
       .eq("status", "requested")
@@ -30,13 +28,10 @@ export async function GET() {
 
     const [usersRes, coursesRes] = await Promise.all([
       userIds.length
-        ? admin
-            .from("system_users")
-            .select("id,full_name,email,phone")
-            .in("id", userIds)
+        ? supabase.from("profiles").select("id,full_name,email,phone").in("id", userIds)
         : Promise.resolve({ data: [], error: null } as any),
       courseIds.length
-        ? admin.from("courses").select("id,title_zh,title_en").in("id", courseIds)
+        ? supabase.from("courses").select("id,title_zh,title_en").in("id", courseIds)
         : Promise.resolve({ data: [], error: null } as any)
     ]);
 

@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React from "react";
-import { UploadCloud } from "lucide-react";
+import { FileText, FileVideo, UploadCloud } from "lucide-react";
 
 type FileRow = {
   id: string;
@@ -27,6 +27,31 @@ function bytesToHuman(bytes: number) {
   return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
+function fileTypeLabel(mimeType: string | null | undefined) {
+  const mime = String(mimeType || "").toLowerCase();
+  if (mime.includes("pdf")) return "PDF";
+  if (mime.includes("word") || mime.includes("officedocument")) return "DOC";
+  if (mime.includes("mp4")) return "MP4";
+  return mime ? mime.split("/").pop() || "FILE" : "FILE";
+}
+
+function isAllowedUpload(file: File) {
+  const name = (file.name || "").toLowerCase();
+  const mime = (file.type || "").toLowerCase();
+  const ext = name.includes(".") ? name.split(".").pop() || "" : "";
+  const allowedExt = ["pdf", "doc", "docx", "mp4"];
+  const allowedMime = [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "video/mp4"
+  ];
+
+  if (allowedMime.includes(mime)) return true;
+  if (allowedExt.includes(ext)) return true;
+  return false;
+}
+
 export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
   const [items, setItems] = React.useState<FileRow[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -41,7 +66,7 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
   });
   const [file, setFile] = React.useState<File | null>(null);
 
-  const [grantUserId, setGrantUserId] = React.useState<Record<string, string>>({});
+  const [grantEmail, setGrantEmail] = React.useState<Record<string, string>>({});
   const uploadRef = React.useRef<HTMLFormElement | null>(null);
 
   const jumpToUpload = () => {
@@ -73,6 +98,9 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
     setUploading(true);
     setError(null);
     try {
+      if (!isAllowedUpload(file)) {
+        throw new Error(locale === "zh" ? "仅允许上传 doc/docx/pdf/mp4" : "Only doc/docx/pdf/mp4 allowed");
+      }
       const fd = new FormData();
       fd.set("file", file);
       fd.set("category", uploadForm.category);
@@ -92,19 +120,19 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
   };
 
   const grant = async (fileId: string) => {
-    const userId = (grantUserId[fileId] || "").trim();
-    if (!userId) return;
+    const email = (grantEmail[fileId] || "").trim();
+    if (!email) return;
     setGrantingId(fileId);
     setError(null);
     try {
       const res = await fetch("/api/system/admin/files/grant", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ fileId, userId })
+        body: JSON.stringify({ fileId, email })
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "grant_failed");
-      setGrantUserId((p) => ({ ...p, [fileId]: "" }));
+      setGrantEmail((p) => ({ ...p, [fileId]: "" }));
     } catch (e: any) {
       setError(e?.message || "grant_failed");
     } finally {
@@ -120,8 +148,8 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
         </div>
         <div className="mt-2 text-white/60 text-sm">
           {locale === "zh"
-            ? "上传课程资料并授权给学员（按 user_id 授权）。"
-            : "Upload files and grant access to students (by user_id)."}
+            ? "上传资料并授权给学员（按学员邮箱授权）。"
+            : "Upload files and grant access by student email."}
         </div>
       </div>
 
@@ -129,7 +157,7 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
         <div className="flex items-center justify-between gap-3">
           <div className="text-white/85 font-semibold">{locale === "zh" ? "上传文件" : "Upload"}</div>
           <div className="text-xs text-white/50">
-            {locale === "zh" ? "支持 PDF/图片/压缩包等" : "PDF / image / archive supported"}
+            {locale === "zh" ? "仅支持 DOC/DOCX/PDF/MP4" : "DOC/DOCX/PDF/MP4 only"}
           </div>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -155,6 +183,7 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
             type="file"
             onChange={(e) => setFile(e.target.files?.[0] || null)}
             className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/70 text-sm"
+            accept=".pdf,.doc,.docx,.mp4,application/pdf,video/mp4,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             required
           />
         </div>
@@ -216,8 +245,16 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
           {items.map((f) => (
             <div key={f.id} className="px-6 py-4">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="text-white/90 font-semibold">{f.name}</div>
+                <div className="flex items-center gap-2 text-white/90 font-semibold">
+                  {String(f.mime_type || "").toLowerCase().includes("mp4") ? (
+                    <FileVideo className="h-4 w-4 text-white/70" />
+                  ) : (
+                    <FileText className="h-4 w-4 text-white/70" />
+                  )}
+                  <span>{f.name}</span>
+                </div>
                 <div className="text-xs text-white/50">{f.category}</div>
+                <div className="text-xs text-white/50">{fileTypeLabel(f.mime_type)}</div>
                 <div className="ml-auto text-xs text-white/50">
                   {bytesToHuman(f.size_bytes)} · {new Date(f.created_at).toLocaleString()}
                 </div>
@@ -225,10 +262,10 @@ export function AdminFilesClient({ locale }: { locale: "zh" | "en" }) {
               {f.description ? <div className="mt-2 text-sm text-white/70">{f.description}</div> : null}
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <input
-                  value={grantUserId[f.id] || ""}
-                  onChange={(e) => setGrantUserId((p) => ({ ...p, [f.id]: e.target.value }))}
+                  value={grantEmail[f.id] || ""}
+                  onChange={(e) => setGrantEmail((p) => ({ ...p, [f.id]: e.target.value }))}
                   className="min-w-[280px] rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/85"
-                  placeholder={locale === "zh" ? "输入学员 user_id 授权下载" : "Student user_id to grant"}
+                  placeholder={locale === "zh" ? "输入学员邮箱授权下载" : "Student email to grant"}
                 />
                 <button
                   type="button"

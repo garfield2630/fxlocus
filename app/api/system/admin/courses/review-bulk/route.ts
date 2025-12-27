@@ -2,7 +2,6 @@
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/system/guard";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,21 +19,28 @@ const Body = z.object({
   reason: z.string().max(500).optional()
 });
 
+const REJECTION_REASONS = ["资料不完整", "不符合要求", "名额已满", "重复申请", "其他"] as const;
+type RejectionReason = (typeof REJECTION_REASONS)[number];
+
+function normalizeRejectionReason(input: unknown): RejectionReason {
+  const value = String(input || "").trim();
+  return (REJECTION_REASONS as readonly string[]).includes(value) ? (value as RejectionReason) : "其他";
+}
+
 function json(payload: unknown, status = 200) {
   return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(req: Request) {
   try {
-    const { user: adminUser } = await requireAdmin();
-    const admin = supabaseAdmin();
+    const { user: adminUser, supabase } = await requireAdmin();
     const raw = await req.json().catch(() => null);
     const parsed = Body.safeParse(raw);
     if (!parsed.success) return json({ ok: false, error: "INVALID_BODY" }, 400);
 
     const now = new Date().toISOString();
     const status = parsed.data.action === "approve" ? "approved" : "rejected";
-    const rejectionReason = status === "rejected" ? String(parsed.data.reason || "Rejected") : null;
+    const rejectionReason = status === "rejected" ? normalizeRejectionReason(parsed.data.reason) : null;
 
     const rows = parsed.data.items.map((it) => ({
       user_id: it.userId,
@@ -45,12 +51,12 @@ export async function POST(req: Request) {
       rejection_reason: rejectionReason
     }));
 
-    const up = await admin.from("course_access").upsert(rows as any, { onConflict: "user_id,course_id" });
+    const up = await supabase.from("course_access").upsert(rows as any, { onConflict: "user_id,course_id" });
     if (up.error) return json({ ok: false, error: up.error.message }, 500);
 
     const courseIds = Array.from(new Set(parsed.data.items.map((it) => it.courseId)));
     const { data: courses, error: courseErr } = courseIds.length
-      ? await admin.from("courses").select("id,title_zh,title_en").in("id", courseIds)
+      ? await supabase.from("courses").select("id,title_zh,title_en").in("id", courseIds)
       : { data: [], error: null };
     if (courseErr) return json({ ok: false, error: courseErr.message }, 500);
 
@@ -75,7 +81,7 @@ export async function POST(req: Request) {
       };
     });
 
-    const ins = await admin.from("notifications").insert(notifications as any);
+    const ins = await supabase.from("notifications").insert(notifications as any);
     if (ins.error) return json({ ok: false, error: ins.error.message }, 500);
 
     return json({ ok: true });

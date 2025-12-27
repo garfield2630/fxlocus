@@ -16,16 +16,15 @@ type AccessRow = {
 
 type UserRow = {
   id: string;
-  full_name: string;
+  full_name: string | null;
   email: string | null;
   phone: string | null;
-  role: string;
+  role: "student";
   status: "active" | "frozen";
+  student_status: "普通学员" | "考核通过" | "学习中" | "捐赠学员";
+  leader_id: string | null;
   created_at?: string;
   last_login_at?: string | null;
-  must_change_password?: boolean;
-  password_updated_at?: string | null;
-  password_updated_reason?: string | null;
 };
 
 export function AdminStudentDetailClient({
@@ -35,6 +34,7 @@ export function AdminStudentDetailClient({
   locale: "zh" | "en";
   userId: string;
 }) {
+  const [meRole, setMeRole] = React.useState<"leader" | "super_admin" | null>(null);
   const [user, setUser] = React.useState<UserRow | null>(null);
   const [access, setAccess] = React.useState<AccessRow[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -43,6 +43,25 @@ export function AdminStudentDetailClient({
   const [msg, setMsg] = React.useState({ title: "", content: "" });
   const [busy, setBusy] = React.useState(false);
   const [customPassword, setCustomPassword] = React.useState("");
+
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/system/me", { cache: "no-store" });
+        const json = await res.json().catch(() => null);
+        if (!alive) return;
+        const role = json?.ok ? String(json?.user?.role || "") : "";
+        if (role === "super_admin") setMeRole("super_admin");
+        else if (role === "leader") setMeRole("leader");
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -81,7 +100,7 @@ export function AdminStudentDetailClient({
   };
 
   const resetPassword = async () => {
-    if (!user) return;
+    if (!user || meRole !== "super_admin") return;
     setBusy(true);
     setResetPw(null);
     setError(null);
@@ -143,7 +162,7 @@ export function AdminStudentDetailClient({
   };
 
   const deleteStudent = async () => {
-    if (!user) return;
+    if (!user || meRole !== "super_admin") return;
     const ok = window.confirm(
       locale === "zh" ? "确认删除该学员？此操作不可恢复。" : "Delete this student? This cannot be undone."
     );
@@ -196,22 +215,26 @@ export function AdminStudentDetailClient({
               >
                 {user.status === "active" ? (locale === "zh" ? "冻结账号" : "Freeze") : locale === "zh" ? "解冻账号" : "Unfreeze"}
               </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={resetPassword}
-                className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
-              >
-                {locale === "zh" ? "重置密码" : "Reset password"}
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={deleteStudent}
-                className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-400/20 text-rose-100 hover:bg-rose-500/15 disabled:opacity-50"
-              >
-                {locale === "zh" ? "删除学员" : "Delete"}
-              </button>
+              {meRole === "super_admin" ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={resetPassword}
+                    className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                  >
+                    {locale === "zh" ? "重置密码" : "Reset password"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={deleteStudent}
+                    className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-400/20 text-rose-100 hover:bg-rose-500/15 disabled:opacity-50"
+                  >
+                    {locale === "zh" ? "删除学员" : "Delete"}
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -223,43 +246,72 @@ export function AdminStudentDetailClient({
               {field(locale === "zh" ? "手机号" : "Phone", user.phone)}
               {field(locale === "zh" ? "角色" : "Role", user.role)}
               {field(locale === "zh" ? "状态" : "Status", user.status)}
+              {field(locale === "zh" ? "学员状态" : "Student status", user.student_status)}
               {field(locale === "zh" ? "注册时间" : "Created", user.created_at ? new Date(user.created_at).toLocaleString() : null)}
               {field(locale === "zh" ? "最后登录" : "Last login", user.last_login_at ? new Date(user.last_login_at).toLocaleString() : null)}
-              {field(locale === "zh" ? "密码更新时间" : "Password updated", user.password_updated_at ? new Date(user.password_updated_at).toLocaleString() : null)}
-              {field(
-                locale === "zh" ? "密码更新来源" : "Password update reason",
-                user.password_updated_reason || "-"
-              )}
+              <div className="pt-2">
+                <div className="text-xs text-white/55 mb-2">{locale === "zh" ? "修改学员状态" : "Update status"}</div>
+                <select
+                  value={user.student_status}
+                  onChange={async (e) => {
+                    const next = e.target.value;
+                    setBusy(true);
+                    setError(null);
+                    try {
+                      const res = await fetch(`/api/system/admin/students/${user.id}/student-status`, {
+                        method: "POST",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ student_status: next })
+                      });
+                      const json = await res.json().catch(() => null);
+                      if (!res.ok || !json?.ok) throw new Error(json?.error || "update_failed");
+                      await load();
+                    } catch (err: any) {
+                      setError(err?.message || "update_failed");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  disabled={busy}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/85 text-sm"
+                >
+                  <option value="普通学员">普通学员</option>
+                  <option value="考核通过">考核通过</option>
+                  <option value="学习中">学习中</option>
+                  <option value="捐赠学员">捐赠学员</option>
+                </select>
+              </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
-              <div className="text-white/85 font-semibold">{locale === "zh" ? "重置密码" : "Reset password"}</div>
-              <input
-                value={customPassword}
-                onChange={(e) => setCustomPassword(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/85 text-sm"
-                placeholder={locale === "zh" ? "输入新密码（可选）" : "Custom password (optional)"}
-              />
-              <div className="text-xs text-white/45">
-                {locale === "zh"
-                  ? "规则：大写+小写+数字+特殊字符，长度 8-64"
-                  : "Rule: upper+lower+digit+special, 8-64 chars."}
-              </div>
-              {resetPw ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-white/80">
-                  {locale === "zh" ? "新密码：" : "New password: "}{" "}
-                  <span className="font-semibold">{resetPw}</span>
+            {meRole === "super_admin" ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+                <div className="text-white/85 font-semibold">{locale === "zh" ? "重置密码" : "Reset password"}</div>
+                <input
+                  value={customPassword}
+                  onChange={(e) => setCustomPassword(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/85 text-sm"
+                  placeholder={locale === "zh" ? "输入新密码（可选）" : "Custom password (optional)"}
+                />
+                <div className="text-xs text-white/45">
+                  {locale === "zh"
+                    ? "规则：大写+小写+数字+特殊字符，长度 8-64"
+                    : "Rule: upper+lower+digit+special, 8-64 chars."}
                 </div>
-              ) : null}
-              <button
-                type="button"
-                disabled={busy}
-                onClick={resetPassword}
-                className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15 disabled:opacity-50"
-              >
-                {locale === "zh" ? "执行重置" : "Reset now"}
-              </button>
-            </div>
+                {resetPw ? (
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-white/80">
+                    {locale === "zh" ? "新密码：" : "New password: "} <span className="font-semibold">{resetPw}</span>
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={resetPassword}
+                  className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15 disabled:opacity-50"
+                >
+                  {locale === "zh" ? "执行重置" : "Reset now"}
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">

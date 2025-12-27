@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { requireAdmin } from "@/lib/system/guard";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const Body = z.object({
+  fileId: z.string().uuid(),
+  email: z.string().email()
+});
 
 function json(payload: unknown, status = 200) {
   return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
@@ -11,33 +17,39 @@ function json(payload: unknown, status = 200) {
 
 export async function POST(req: Request) {
   try {
-    const { user: adminUser } = await requireAdmin();
-    const admin = supabaseAdmin();
-    const body = await req.json().catch(() => null);
+    const { user: adminUser, supabase } = await requireAdmin();
+    const parsed = Body.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) return json({ ok: false, error: "INVALID_BODY" }, 400);
 
-    const fileId = String(body?.fileId || "");
-    const userId = String(body?.userId || "");
+    const fileId = parsed.data.fileId;
+    const email = parsed.data.email.trim().toLowerCase();
 
-    if (!fileId || !userId) return json({ ok: false, error: "INVALID_BODY" }, 400);
+    const { data: profile, error: profileErr } = await supabase
+      .from("profiles")
+      .select("id,role")
+      .eq("email", email)
+      .maybeSingle();
 
-    await admin.from("file_permissions").delete().eq("file_id", fileId).eq("user_id", userId);
-    const ins = await admin
-      .from("file_permissions")
-      .insert({ file_id: fileId, user_id: userId })
-      .select("*")
-      .single();
+    if (profileErr) return json({ ok: false, error: profileErr.message }, 500);
+    if (!profile?.id) return json({ ok: false, error: "NO_SUCH_EMAIL" }, 404);
+    if (profile.role !== "student") return json({ ok: false, error: "NOT_A_STUDENT" }, 400);
+
+    const ins = await supabase.from("file_permissions").upsert(
+      {
+        file_id: fileId,
+        grantee_profile_id: profile.id,
+        granted_by: adminUser.id
+      } as any,
+      { onConflict: "file_id,grantee_profile_id", ignoreDuplicates: true }
+    );
 
     if (ins.error) return json({ ok: false, error: ins.error.message }, 500);
 
-    const { data: f } = await admin
-      .from("files")
-      .select("id,name,category")
-      .eq("id", fileId)
-      .maybeSingle();
-
+    const { data: f } = await supabase.from("files").select("id,name,category").eq("id", fileId).maybeSingle();
     const label = f ? `${f.category || ""} ${f.name || ""}`.trim() : fileId;
-    const note = await admin.from("notifications").insert({
-      to_user_id: userId,
+
+    const note = await supabase.from("notifications").insert({
+      to_user_id: profile.id,
       from_user_id: adminUser.id,
       title: "文件已授权 / File access granted",
       content: `你已获得文件下载权限：${label}\n\nYou have been granted access to download: ${label}`

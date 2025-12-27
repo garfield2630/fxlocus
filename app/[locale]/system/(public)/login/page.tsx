@@ -1,21 +1,200 @@
 ﻿"use client";
 
 import React from "react";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, Lock, Mail } from "lucide-react";
 
+import { SliderCaptcha } from "@/components/system/SliderCaptcha";
 import { isAdminRole } from "@/lib/system/roles";
 
+type LoginRole = "" | "student" | "leader" | "super_admin";
+
 type LoginResponse =
-  | { ok: true; user: { id: string; full_name: string; role: "admin" | "student" | "super_admin" } }
+  | { ok: true; user: { id: string; full_name: string | null; role: "student" | "leader" | "super_admin" } }
   | { ok: false; error: string };
+
+type RoleOption = {
+  value: Exclude<LoginRole, "">;
+  label: { zh: string; en: string };
+};
+
+const ROLE_OPTIONS: RoleOption[] = [
+  { value: "student", label: { zh: "学员", en: "Student" } },
+  { value: "leader", label: { zh: "团队长", en: "Leader" } },
+  { value: "super_admin", label: { zh: "超管", en: "Super Admin" } }
+];
+
+function RoleSelect({
+  locale,
+  value,
+  onChange,
+  disabled
+}: {
+  locale: "zh" | "en";
+  value: LoginRole;
+  onChange: (next: LoginRole) => void;
+  disabled?: boolean;
+}) {
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
+  const buttonRef = React.useRef<HTMLButtonElement | null>(null);
+  const optionRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
+
+  const [open, setOpen] = React.useState(false);
+  const [activeIndex, setActiveIndex] = React.useState(-1);
+
+  const selectedIndex = value ? ROLE_OPTIONS.findIndex((o) => o.value === value) : -1;
+  const displayText = value
+    ? ROLE_OPTIONS.find((o) => o.value === value)?.label[locale] ?? ""
+    : locale === "zh"
+      ? "请选择账号类型（学员 / 团队长 / 超管）"
+      : "Select account type";
+
+  const close = React.useCallback(() => {
+    setOpen(false);
+    setActiveIndex(-1);
+    window.setTimeout(() => buttonRef.current?.focus(), 0);
+  }, []);
+
+  const openMenu = React.useCallback(() => {
+    if (disabled) return;
+    setOpen(true);
+    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+    window.setTimeout(() => {
+      const idx = selectedIndex >= 0 ? selectedIndex : 0;
+      optionRefs.current[idx]?.focus();
+    }, 0);
+  }, [disabled, selectedIndex]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const root = rootRef.current;
+      if (!root) return;
+      if (!root.contains(e.target as Node)) close();
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
+  }, [close, open]);
+
+  const onTriggerKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) return;
+    if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (!open) openMenu();
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!open) openMenu();
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    }
+  };
+
+  const onOptionKeyDown = (e: React.KeyboardEvent) => {
+    if (!open) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = Math.min(ROLE_OPTIONS.length - 1, activeIndex + 1);
+      setActiveIndex(next);
+      optionRefs.current[next]?.focus();
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const next = Math.max(0, activeIndex - 1);
+      setActiveIndex(next);
+      optionRefs.current[next]?.focus();
+      return;
+    }
+  };
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        ref={buttonRef}
+        type="button"
+        disabled={disabled}
+        onClick={() => (open ? close() : openMenu())}
+        onKeyDown={onTriggerKeyDown}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={[
+          "w-full flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition-colors",
+          "bg-white/10 border-white/10 hover:bg-white/15 focus:outline-none focus:border-white/30",
+          disabled ? "opacity-60 cursor-not-allowed hover:bg-white/10" : "",
+          value ? "text-white/90" : "text-white/70"
+        ].join(" ")}
+      >
+        <span className="truncate">{displayText}</span>
+        <ChevronDown
+          className={[
+            "h-4 w-4 text-white/50 transition-transform",
+            open ? "rotate-180" : "rotate-0"
+          ].join(" ")}
+        />
+      </button>
+
+      {open ? (
+        <div
+          role="listbox"
+          aria-label={locale === "zh" ? "账号类型" : "Account type"}
+          className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-white/10 bg-[#050a14]/95 shadow-2xl backdrop-blur-xl"
+        >
+          {ROLE_OPTIONS.map((opt, idx) => {
+            const isSelected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                ref={(el) => {
+                  optionRefs.current[idx] = el;
+                }}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onMouseEnter={() => setActiveIndex(idx)}
+                onKeyDown={onOptionKeyDown}
+                onClick={() => {
+                  onChange(opt.value);
+                  close();
+                }}
+                className={[
+                  "w-full flex items-center px-4 py-3 text-left text-sm",
+                  "text-white/90 outline-none",
+                  idx === activeIndex ? "bg-white/10" : "bg-transparent",
+                  isSelected ? "border-l-2 border-sky-300/70" : "border-l-2 border-transparent",
+                  "hover:bg-white/10"
+                ].join(" ")}
+              >
+                {opt.label[locale]}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export default function SystemLoginPage({ params }: { params: { locale: "zh" | "en" } }) {
   const locale = params.locale === "en" ? "en" : "zh";
   const [identifier, setIdentifier] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [loginRole, setLoginRole] = React.useState<LoginRole>("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+  const [captchaOk, setCaptchaOk] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const canStartCaptcha = Boolean(loginRole && identifier.trim() && password.trim());
+  const captchaResetSignal = `${loginRole}|${identifier.trim()}|${password.trim()}`;
 
   React.useEffect(() => {
     const html = document.documentElement;
@@ -41,16 +220,41 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!loginRole) {
+      setError(locale === "zh" ? "请选择账号类型" : "Select account type.");
+      return;
+    }
+    if (!captchaOk) {
+      setError(locale === "zh" ? "请先完成图形拖动验证" : "Complete the drag verification first.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/system/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ identifier, password })
+        body: JSON.stringify({ identifier, password, role: loginRole })
       });
       const json = (await res.json().catch(() => null)) as LoginResponse | null;
       if (!res.ok || !json?.ok) {
-        setError(locale === "zh" ? "登录失败，请检查账号或密码" : "Sign in failed.");
+        const code = String((json as any)?.error || "");
+        if (code === "ROLE_MISMATCH") {
+          setError(
+            locale === "zh"
+              ? "账号类型不匹配，请检查选择的账号类型（权限）"
+              : "Account type mismatch. Please check the selected account type."
+          );
+        } else if (code === "INVALID_EMAIL") {
+          setError(locale === "zh" ? "邮箱格式不正确" : "Invalid email format.");
+        } else if (code === "INVALID_CREDENTIALS") {
+          setError(
+            locale === "zh"
+              ? "账号或密码错误，请仔细检查账号、密码以及账号类型（权限）"
+              : "Invalid credentials. Please check email/password and account type."
+          );
+        } else {
+          setError(locale === "zh" ? "登录失败，请稍后重试" : "Sign in failed.");
+        }
         return;
       }
 
@@ -98,13 +302,21 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
 
             <div className="mt-6 space-y-3">
               <div className="relative">
+                <RoleSelect
+                  locale={locale}
+                  value={loginRole}
+                  onChange={setLoginRole}
+                  disabled={loading}
+                />
+              </div>
+              <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
                 <input
                   name="system-identifier"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full rounded-2xl bg-white/5 border border-white/10 px-10 py-3 text-white/85 text-sm focus:outline-none focus:border-white/30"
-                  placeholder={locale === "zh" ? "邮箱或手机号" : "Email or phone"}
+                  placeholder={locale === "zh" ? "邮箱" : "Email"}
                   autoComplete="off"
                   required
                 />
@@ -130,11 +342,17 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              <SliderCaptcha
+                locale={locale}
+                disabled={!canStartCaptcha || loading}
+                resetSignal={captchaResetSignal}
+                onChange={setCaptchaOk}
+              />
             </div>
 
             <button
               type="submit"
-              disabled={loading || !identifier.trim() || !password.trim()}
+              disabled={loading || !loginRole || !identifier.trim() || !password.trim() || !captchaOk}
               className="mt-6 w-full px-4 py-3 rounded-2xl bg-white/10 border border-white/20 text-white hover:bg-white/15 disabled:opacity-50"
             >
               {loading ? (locale === "zh" ? "登录中..." : "Signing in...") : locale === "zh" ? "登录" : "Sign in"}

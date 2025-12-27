@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { requireSystemUser } from "@/lib/system/guard";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,10 +11,9 @@ function json(payload: unknown, status = 200) {
 
 export async function GET() {
   try {
-    const { user } = await requireSystemUser();
-    const admin = supabaseAdmin();
+    const { user, supabase } = await requireSystemUser();
 
-    const q = await admin
+    const q = await supabase
       .from("notifications")
       .select("id", { count: "exact", head: true })
       .eq("to_user_id", user.id)

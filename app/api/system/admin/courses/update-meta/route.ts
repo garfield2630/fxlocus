@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireAdmin } from "@/lib/system/guard";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
+import { requireSuperAdmin } from "@/lib/system/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,8 +20,7 @@ function json(payload: unknown, status = 200) {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin();
-    const admin = supabaseAdmin();
+    const { supabase } = await requireSuperAdmin();
     const raw = await req.json().catch(() => null);
     const parsed = Body.safeParse(raw);
     if (!parsed.success) return json({ ok: false, error: "INVALID_BODY" }, 400);
@@ -38,7 +36,7 @@ export async function POST(req: Request) {
       if (parsed.data.deleted) patch.published = false;
     }
 
-    const up = await admin
+    const up = await supabase
       .from("courses")
       .update(patch as any)
       .eq("id", parsed.data.courseId)

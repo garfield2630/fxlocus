@@ -1,17 +1,17 @@
 import React from "react";
 import { unstable_noStore } from "next/cache";
 
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
+import { createSupabaseServerClient } from "@/lib/supabase/ssr";
 
 export const dynamic = "force-dynamic";
 
 export async function AdminOverview({ locale }: { locale: "zh" | "en" }) {
   unstable_noStore();
-  const admin = supabaseAdmin();
-  const [{ count: usersCount }, { count: frozenCount }, { count: requestedCount }] = await Promise.all([
-    admin.from("system_users").select("*", { count: "exact", head: true }),
-    admin.from("system_users").select("*", { count: "exact", head: true }).eq("status", "frozen"),
-    admin.from("course_access").select("*", { count: "exact", head: true }).eq("status", "requested")
+  const supabase = createSupabaseServerClient();
+  const [{ count: studentsCount }, { count: frozenCount }, { count: requestedCount }] = await Promise.all([
+    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student"),
+    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student").eq("status", "frozen"),
+    supabase.from("course_access").select("id", { count: "exact", head: true }).eq("status", "requested")
   ]);
 
   return (
@@ -27,8 +27,8 @@ export async function AdminOverview({ locale }: { locale: "zh" | "en" }) {
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="text-xs text-white/50">{locale === "zh" ? "学员总数" : "Users"}</div>
-          <div className="mt-2 text-3xl font-semibold text-white">{usersCount || 0}</div>
+          <div className="text-xs text-white/50">{locale === "zh" ? "学员总数" : "Students"}</div>
+          <div className="mt-2 text-3xl font-semibold text-white">{studentsCount || 0}</div>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
           <div className="text-xs text-white/50">{locale === "zh" ? "冻结账号" : "Frozen"}</div>
@@ -42,4 +42,3 @@ export async function AdminOverview({ locale }: { locale: "zh" | "en" }) {
     </div>
   );
 }
-

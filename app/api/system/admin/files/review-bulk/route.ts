@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/system/guard";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,54 +19,66 @@ const Body = z.object({
   reason: z.string().max(500).optional()
 });
 
+const REJECTION_REASONS = ["资料不完整", "不符合要求", "名额已满", "重复申请", "其他"] as const;
+type RejectionReason = (typeof REJECTION_REASONS)[number];
+
+function normalizeRejectionReason(input: unknown): RejectionReason {
+  const value = String(input || "").trim();
+  return (REJECTION_REASONS as readonly string[]).includes(value) ? (value as RejectionReason) : "其他";
+}
+
 function json(payload: unknown, status = 200) {
   return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(req: Request) {
   try {
-    const { user: adminUser } = await requireAdmin();
-    const admin = supabaseAdmin();
+    const { user: adminUser, supabase } = await requireAdmin();
     const raw = await req.json().catch(() => null);
     const parsed = Body.safeParse(raw);
     if (!parsed.success) return json({ ok: false, error: "INVALID_BODY" }, 400);
 
     const now = new Date().toISOString();
     const status = parsed.data.action === "approve" ? "approved" : "rejected";
-    const rejectionReason = status === "rejected" ? String(parsed.data.reason || "Rejected") : null;
+    const rejectionReason = status === "rejected" ? normalizeRejectionReason(parsed.data.reason) : null;
 
     const unique = new Map<string, { userId: string; fileId: string }>();
     for (const it of parsed.data.items) unique.set(`${it.userId}:${it.fileId}`, it);
     const items = Array.from(unique.values());
 
     if (status === "approved") {
-      const perms = items.map((it) => ({ user_id: it.userId, file_id: it.fileId }));
-      const up = await admin
+      const perms = items.map((it) => ({
+        file_id: it.fileId,
+        grantee_profile_id: it.userId,
+        granted_by: adminUser.id
+      }));
+      const up = await supabase
         .from("file_permissions")
-        .upsert(perms as any, { onConflict: "user_id,file_id" });
+        .upsert(perms as any, { onConflict: "file_id,grantee_profile_id", ignoreDuplicates: true });
       if (up.error) return json({ ok: false, error: up.error.message }, 500);
     }
 
-    const reqRows = items.map((it) => ({
-      user_id: it.userId,
-      file_id: it.fileId,
-      status,
-      reviewed_at: now,
-      reviewed_by: adminUser.id,
-      rejection_reason: rejectionReason
-    }));
-
-    const upReq = await admin
-      .from("file_access_requests")
-      .upsert(reqRows as any, { onConflict: "user_id,file_id" });
-    if (upReq.error) return json({ ok: false, error: upReq.error.message }, 500);
+    const updates = await Promise.all(
+      items.map((it) =>
+        supabase
+          .from("file_access_requests")
+          .update({
+            status,
+            reviewed_at: now,
+            reviewed_by: adminUser.id,
+            rejection_reason: rejectionReason
+          } as any)
+          .eq("user_id", it.userId)
+          .eq("file_id", it.fileId)
+      )
+    );
+    for (const u of updates) {
+      if (u.error) return json({ ok: false, error: u.error.message }, 500);
+    }
 
     const fileIds = Array.from(new Set(items.map((it) => it.fileId)));
     const { data: files, error: fileErr } = fileIds.length
-      ? await admin
-          .from("files")
-          .select("id,name,category")
-          .in("id", fileIds)
+      ? await supabase.from("files").select("id,name,category").in("id", fileIds)
       : { data: [], error: null };
     if (fileErr) return json({ ok: false, error: fileErr.message }, 500);
     const fileById = new Map((files || []).map((f: any) => [f.id, f]));
@@ -89,7 +100,7 @@ export async function POST(req: Request) {
       };
     });
 
-    const ins = await admin.from("notifications").insert(notifications as any);
+    const ins = await supabase.from("notifications").insert(notifications as any);
     if (ins.error) return json({ ok: false, error: "NOTIFY_FAILED" }, 500);
 
     return json({ ok: true });

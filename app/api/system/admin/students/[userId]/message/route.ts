@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getSystemAuth } from "@/lib/system/auth";
-import { isAdminRole, isSuperAdmin } from "@/lib/system/roles";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
+import { requireAdmin } from "@/lib/system/guard";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const Body = z.object({
   title: z.string().min(1).max(120).optional(),
@@ -17,34 +16,20 @@ function noStoreJson(payload: unknown, status = 200) {
 }
 
 export async function POST(req: NextRequest, ctx: { params: { userId: string } }) {
-  const auth = await getSystemAuth();
-  if (!auth.ok) return noStoreJson({ ok: false, error: auth.reason }, 401);
-  if (!isAdminRole(auth.user.role)) return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
-
+  const { user, supabase } = await requireAdmin();
   const userId = ctx.params.userId;
   if (!userId) return noStoreJson({ ok: false, error: "INVALID_USER" }, 400);
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return noStoreJson({ ok: false, error: "INVALID_BODY" }, 400);
 
-  const admin = supabaseAdmin();
-  const { data: target, error: targetErr } = await admin
-    .from("system_users")
-    .select("id,role")
-    .eq("id", userId)
-    .maybeSingle();
-  if (targetErr || !target) return noStoreJson({ ok: false, error: "NOT_FOUND" }, 404);
-  if (!isSuperAdmin(auth.user.role) && target.role !== "student") {
-    return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
-  }
-
-  const { error } = await admin.from("notifications").insert({
+  const { error } = await supabase.from("notifications").insert({
     to_user_id: userId,
-    from_user_id: auth.user.id,
+    from_user_id: user.id,
     title: parsed.data.title || "Message",
     content: parsed.data.content
   });
 
-  if (error) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
+  if (error) return noStoreJson({ ok: false, error: error.message }, 500);
   return noStoreJson({ ok: true });
 }

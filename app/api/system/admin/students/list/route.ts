@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/system/guard";
-import { isSuperAdmin } from "@/lib/system/roles";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,24 +11,20 @@ function noStoreJson(payload: unknown, status = 200) {
 
 export async function GET() {
   try {
-    const { user } = await requireAdmin();
-    const admin = supabaseAdmin();
-    let query = admin
-      .from("system_users")
-      .select("id,full_name,email,phone,role,status,created_at,last_login_at,default_open_courses")
+    const ctx = await requireAdmin();
+
+    const { data: users, error } = await ctx.supabase
+      .from("profiles")
+      .select("id,full_name,email,phone,role,status,created_at,last_login_at,student_status,leader_id")
+      .eq("role", "student")
       .order("created_at", { ascending: false })
       .limit(200);
 
-    if (!isSuperAdmin(user.role)) {
-      query = query.eq("role", "student");
-    }
-
-    const { data: users, error } = await query;
     if (error) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
 
     const userIds = (users || []).map((u: any) => u.id);
     const { data: access } = userIds.length
-      ? await admin
+      ? await ctx.supabase
           .from("course_access")
           .select("user_id,status")
           .in("user_id", userIds)
@@ -56,6 +50,7 @@ export async function GET() {
 
     const items = (users || []).map((u: any) => ({
       ...u,
+      full_name: u.full_name || "",
       stats: statsByUser.get(u.id) || { requested: 0, approved: 0, completed: 0, rejected: 0 }
     }));
 

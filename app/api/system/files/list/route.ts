@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { requireStudent } from "@/lib/system/guard";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,17 +11,16 @@ function json(payload: unknown, status = 200) {
 
 export async function GET() {
   try {
-    const { user } = await requireStudent();
-    const admin = supabaseAdmin();
+    const { user, supabase } = await requireStudent();
 
     const [filesRes, permsRes, reqRes] = await Promise.all([
-      admin
+      supabase
         .from("files")
         .select("id,category,name,description,size_bytes,mime_type,created_at")
         .order("created_at", { ascending: false })
         .limit(300),
-      admin.from("file_permissions").select("file_id").eq("user_id", user.id),
-      admin
+      supabase.from("file_permissions").select("file_id").eq("grantee_profile_id", user.id),
+      supabase
         .from("file_access_requests")
         .select("file_id,status,rejection_reason,requested_at,reviewed_at")
         .eq("user_id", user.id)

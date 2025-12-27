@@ -1,6 +1,7 @@
 import createMiddleware from "next-intl/middleware";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
 import { defaultLocale, locales } from "./i18n/routing";
 
@@ -12,7 +13,10 @@ const intlMiddleware = createMiddleware({
 });
 
 const SESSION_COOKIE_NAME = "fxlocus_session";
-const SYSTEM_COOKIE_NAME = "fxlocus_system_token";
+
+function hasSupabaseEnv() {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
 
 function base64UrlToBytes(input: string) {
   let base64 = input.replace(/-/g, "+").replace(/_/g, "/");
@@ -98,13 +102,46 @@ export default async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
       }
     }
+  }
 
-    if (rest === "/system" || rest.startsWith("/system/")) {
-      const isPublic = rest === "/system/login";
+  const response = intlMiddleware(request);
 
-      if (!isPublic) {
-        const token = request.cookies.get(SYSTEM_COOKIE_NAME)?.value;
-        if (!token) {
+  // Supabase Auth session refresh + optional /system protection.
+  // We only run it for locale-prefixed `/system/*` routes to keep overhead low.
+  if (hasSupabaseEnv()) {
+    const localeMatch = /^\/(zh|en)(?=\/|$)/.exec(pathname);
+    const locale = localeMatch?.[1] as "zh" | "en" | undefined;
+    if (locale) {
+      const rest = pathname.slice(`/${locale}`.length) || "/";
+      const isSystem = rest === "/system" || rest.startsWith("/system/");
+      const isSystemPublic =
+        rest === "/system/login" ||
+        rest === "/system/forgot-password" ||
+        rest === "/system/reset-password";
+
+      if (isSystem) {
+        const supabase = createServerClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            cookies: {
+              getAll() {
+                return request.cookies.getAll();
+              },
+              setAll(cookiesToSet) {
+                for (const { name, value, options } of cookiesToSet) {
+                  response.cookies.set(name, value, options);
+                }
+              }
+            }
+          }
+        );
+
+        const {
+          data: { user }
+        } = await supabase.auth.getUser();
+
+        if (!isSystemPublic && !user) {
           const url = request.nextUrl.clone();
           url.pathname = `/${locale}/system/login`;
           url.searchParams.set("next", pathname + request.nextUrl.search);
@@ -114,7 +151,7 @@ export default async function middleware(request: NextRequest) {
     }
   }
 
-  return intlMiddleware(request);
+  return response;
 }
 
 export const config = {

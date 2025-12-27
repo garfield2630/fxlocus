@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { requireStudent } from "@/lib/system/guard";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,8 +11,7 @@ function json(payload: unknown, status = 200) {
 
 export async function POST(req: Request) {
   try {
-    const { user } = await requireStudent();
-    const admin = supabaseAdmin();
+    const { user, supabase } = await requireStudent();
     const body = await req.json().catch(() => null);
 
     const courseId = Number(body?.courseId);
@@ -22,7 +20,7 @@ export async function POST(req: Request) {
     }
 
     const now = new Date().toISOString();
-    const { data: existing, error: existErr } = await admin
+    const { data: existing, error: existErr } = await supabase
       .from("course_access")
       .select("id,status")
       .eq("user_id", user.id)
@@ -32,7 +30,7 @@ export async function POST(req: Request) {
     if (existErr) return json({ ok: false, error: "DB_ERROR" }, 500);
 
     if (!existing) {
-      const ins = await admin.from("course_access").insert({
+      const ins = await supabase.from("course_access").insert({
         user_id: user.id,
         course_id: courseId,
         status: "requested",
@@ -44,7 +42,7 @@ export async function POST(req: Request) {
     }
 
     if (existing.status === "rejected") {
-      const up = await admin
+      const up = await supabase
         .from("course_access")
         .update({
           status: "requested",
@@ -65,4 +63,3 @@ export async function POST(req: Request) {
     return json({ ok: false, error: code }, status);
   }
 }
-
