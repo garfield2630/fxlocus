@@ -7,11 +7,10 @@ import { isStrongSystemPassword } from "@/lib/system/passwordPolicy";
 type Me = {
   ok: boolean;
   user?: {
-    full_name: string;
+    full_name: string | null;
     email: string | null;
     phone: string | null;
-    role: "admin" | "student" | "super_admin";
-    status: "active" | "frozen";
+    role: "student" | "leader" | "super_admin";
   };
 };
 
@@ -95,13 +94,16 @@ export function ProfileClient({ locale }: { locale: "zh" | "en" }) {
   };
 
   const newOk = newPassword ? isStrongSystemPassword(newPassword) : false;
+  const canChangePassword = me?.ok && me.user?.role === "super_admin";
 
   return (
     <div className="space-y-6 max-w-[900px]">
       <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
         <div className="text-white/90 font-semibold text-xl">{locale === "zh" ? "个人资料" : "Profile"}</div>
         <div className="mt-2 text-white/60 text-sm">
-          {locale === "zh" ? "修改姓名/手机号，密码在此更新。" : "Update your info and password."}
+          {locale === "zh"
+            ? "修改姓名/手机号。"
+            : "Update your info."}
         </div>
       </div>
 
@@ -142,43 +144,45 @@ export function ProfileClient({ locale }: { locale: "zh" | "en" }) {
             </button>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-3">
-            <div className="text-white/85 font-semibold">{locale === "zh" ? "修改密码" : "Password"}</div>
-            <div>
-              <div className="text-xs text-white/55 mb-2">{locale === "zh" ? "当前密码" : "Current password"}</div>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white/85 text-sm"
-              />
+          {canChangePassword ? (
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-3">
+              <div className="text-white/85 font-semibold">{locale === "zh" ? "修改密码" : "Password"}</div>
+              <div>
+                <div className="text-xs text-white/55 mb-2">{locale === "zh" ? "当前密码" : "Current password"}</div>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white/85 text-sm"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-white/55 mb-2">{locale === "zh" ? "新密码" : "New password"}</div>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className={[
+                    "w-full rounded-xl bg-white/5 border px-3 py-2 text-white/85 text-sm",
+                    newPassword && !newOk ? "border-rose-400/30" : "border-white/10"
+                  ].join(" ")}
+                />
+              </div>
+              <button
+                type="button"
+                disabled={saving || !currentPassword.trim() || !newOk}
+                onClick={changePassword}
+                className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15 disabled:opacity-50"
+              >
+                {locale === "zh" ? "更新密码" : "Update password"}
+              </button>
+              <div className="text-xs text-white/50">
+                {locale === "zh"
+                  ? "规则：大写+小写+数字+特殊字符，长度 8-64"
+                  : "Rule: upper+lower+digit+special, 8-64 chars."}
+              </div>
             </div>
-            <div>
-              <div className="text-xs text-white/55 mb-2">{locale === "zh" ? "新密码" : "New password"}</div>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className={[
-                  "w-full rounded-xl bg-white/5 border px-3 py-2 text-white/85 text-sm",
-                  newPassword && !newOk ? "border-rose-400/30" : "border-white/10"
-                ].join(" ")}
-              />
-            </div>
-            <button
-              type="button"
-              disabled={saving || !currentPassword.trim() || !newOk}
-              onClick={changePassword}
-              className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15 disabled:opacity-50"
-            >
-              {locale === "zh" ? "更新密码" : "Update password"}
-            </button>
-            <div className="text-xs text-white/50">
-              {locale === "zh"
-                ? "规则：大写+小写+数字+特殊字符，长度 8-64"
-                : "Rule: upper+lower+digit+special, 8-64 chars."}
-            </div>
-          </div>
+          ) : null}
         </div>
       ) : null}
 

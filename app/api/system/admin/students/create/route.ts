@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/system/guard";
-import { hashPassword } from "@/lib/system/password";
 import { isStrongSystemPassword } from "@/lib/system/passwordPolicy";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
@@ -11,10 +10,11 @@ export const dynamic = "force-dynamic";
 
 const Body = z.object({
   fullName: z.string().min(1).max(120),
-  email: z.string().email().optional().or(z.literal("")),
+  email: z.string().email(),
   phone: z.string().min(3).max(40).optional().or(z.literal("")),
-  initialPassword: z.string().min(6).max(128),
-  defaultOpenCourses: z.number().int().min(0).max(20).optional().default(0)
+  initialPassword: z.string().min(8).max(64),
+  defaultOpenCourses: z.number().int().min(0).max(20).optional().default(0),
+  leaderId: z.string().uuid().optional().or(z.literal(""))
 });
 
 function noStoreJson(payload: unknown, status = 200) {
@@ -22,10 +22,12 @@ function noStoreJson(payload: unknown, status = 200) {
 }
 
 export async function POST(req: NextRequest) {
-  let adminUserId = "";
+  let actorId = "";
+  let actorRole: "leader" | "super_admin" = "leader";
   try {
     const ctx = await requireAdmin();
-    adminUserId = ctx.user.id;
+    actorId = ctx.user.id;
+    actorRole = ctx.user.role === "super_admin" ? "super_admin" : "leader";
   } catch (e: any) {
     const code = String(e?.code || "UNAUTHORIZED");
     const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
@@ -41,55 +43,72 @@ export async function POST(req: NextRequest) {
   const admin = supabaseAdmin();
   const now = new Date().toISOString();
 
-  const passwordHash = await hashPassword(parsed.data.initialPassword);
-  const email = parsed.data.email?.trim() || null;
+  const email = parsed.data.email.trim().toLowerCase();
   const phone = parsed.data.phone?.trim() || null;
 
-  const { data: created, error } = await admin
-    .from("system_users")
-    .insert({
-      full_name: parsed.data.fullName,
-      email,
-      phone,
-      password_hash: passwordHash,
-      role: "student",
-      status: "active",
-      must_change_password: true,
-      default_open_courses: parsed.data.defaultOpenCourses,
-      created_at: now,
-      password_updated_at: now,
-      password_updated_by: adminUserId,
-      password_updated_reason: "admin_reset",
-      updated_at: now
-    })
-    .select("id")
-    .single();
+  const leaderIdRaw = parsed.data.leaderId?.trim() || "";
+  let leaderId: string | null = null;
+  if (actorRole === "leader") {
+    leaderId = actorId;
+  } else {
+    leaderId = leaderIdRaw ? leaderIdRaw : null;
+    if (leaderId) {
+      const { data: leader } = await admin.from("profiles").select("id,role").eq("id", leaderId).maybeSingle();
+      if (!leader?.id || leader.role !== "leader") {
+        return noStoreJson({ ok: false, error: "INVALID_LEADER" }, 400);
+      }
+    }
+  }
 
-  if (error || !created?.id) {
-    return noStoreJson({ ok: false, error: error?.message || "DB_ERROR" }, 500);
+  const createdAuth = await admin.auth.admin.createUser({
+    email,
+    password: parsed.data.initialPassword,
+    email_confirm: true,
+    user_metadata: { full_name: parsed.data.fullName }
+  });
+
+  if (createdAuth.error || !createdAuth.data.user?.id) {
+    return noStoreJson({ ok: false, error: createdAuth.error?.message || "AUTH_CREATE_FAILED" }, 500);
+  }
+
+  const createdUserId = createdAuth.data.user.id;
+
+  const profileUpsert = await admin.from("profiles").upsert(
+    {
+      id: createdUserId,
+      email,
+      full_name: parsed.data.fullName,
+      phone,
+      role: "student",
+      leader_id: leaderId,
+      student_status: "普通学员",
+      status: "active",
+      created_at: now,
+      updated_at: now
+    } as any,
+    { onConflict: "id" }
+  );
+
+  if (profileUpsert.error) {
+    await admin.auth.admin.deleteUser(createdUserId);
+    return noStoreJson({ ok: false, error: profileUpsert.error.message }, 500);
   }
 
   if (parsed.data.defaultOpenCourses > 0) {
     const courseIds = Array.from({ length: parsed.data.defaultOpenCourses }).map((_, i) => i + 1);
     await admin.from("course_access").upsert(
       courseIds.map((courseId) => ({
-        user_id: created.id,
+        user_id: createdUserId,
         course_id: courseId,
         status: "approved",
         requested_at: now,
         reviewed_at: now,
-        reviewed_by: adminUserId,
+        reviewed_by: actorId,
         updated_at: now
       })),
       { onConflict: "user_id,course_id" }
     );
   }
 
-  await admin.from("system_login_logs").insert({
-    user_id: adminUserId,
-    event: "user_created",
-    meta: { createdUserId: created.id }
-  });
-
-  return noStoreJson({ ok: true, id: created.id });
+  return noStoreJson({ ok: true, id: createdUserId });
 }

@@ -2,7 +2,6 @@
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/system/guard";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,15 +19,25 @@ const BodyByUser = z.object({
   reason: z.string().max(500).optional()
 });
 
+const REJECTION_REASONS = ["资料不完整", "不符合要求", "名额已满", "重复申请", "其他"] as const;
+type RejectionReason = (typeof REJECTION_REASONS)[number];
+
+function normalizeRejectionReason(input: unknown): RejectionReason {
+  const value = String(input || "").trim();
+  return (REJECTION_REASONS as readonly string[]).includes(value) ? (value as RejectionReason) : "其他";
+}
+
 function noStoreJson(payload: unknown, status = 200) {
   return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(req: NextRequest) {
   let adminUserId = "";
+  let supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"];
   try {
     const ctx = await requireAdmin();
     adminUserId = ctx.user.id;
+    supabase = ctx.supabase;
   } catch (e: any) {
     const code = String(e?.code || "UNAUTHORIZED");
     const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
@@ -40,7 +49,6 @@ export async function POST(req: NextRequest) {
   const parsedByUser = BodyByUser.safeParse(raw);
   if (!parsed.success && !parsedByUser.success) return noStoreJson({ ok: false, error: "INVALID_BODY" }, 400);
 
-  const admin = supabaseAdmin();
   const now = new Date().toISOString();
 
   const notify = async (
@@ -49,7 +57,7 @@ export async function POST(req: NextRequest) {
     status: "approved" | "rejected",
     reason?: string
   ) => {
-    const { data: c } = await admin
+    const { data: c } = await supabase!
       .from("courses")
       .select("id,title_zh,title_en")
       .eq("id", courseId)
@@ -65,7 +73,7 @@ export async function POST(req: NextRequest) {
         ? `你的课程申请已通过：${label}\n\nYour course request has been approved: ${label}`
         : `你的课程申请被拒绝：${label}\n原因：${reason || "Rejected"}\n\nYour course request was rejected: ${label}\nReason: ${reason || "Rejected"}`;
 
-    const ins = await admin.from("notifications").insert({
+    const ins = await supabase!.from("notifications").insert({
       to_user_id: toUserId,
       from_user_id: adminUserId,
       title,
@@ -77,7 +85,7 @@ export async function POST(req: NextRequest) {
   };
 
   if (parsed.success) {
-    const { data: row, error: rowErr } = await admin
+    const { data: row, error: rowErr } = await supabase!
       .from("course_access")
       .select("user_id,course_id")
       .eq("id", parsed.data.accessId)
@@ -95,10 +103,10 @@ export async function POST(req: NextRequest) {
       payload.rejection_reason = null;
     } else {
       payload.status = "rejected";
-      payload.rejection_reason = parsed.data.rejectionReason || "Rejected";
+      payload.rejection_reason = normalizeRejectionReason(parsed.data.rejectionReason);
     }
 
-    const { error } = await admin.from("course_access").update(payload).eq("id", parsed.data.accessId);
+    const { error } = await supabase!.from("course_access").update(payload).eq("id", parsed.data.accessId);
     if (error) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
 
     const nerr = await notify(
@@ -116,9 +124,9 @@ export async function POST(req: NextRequest) {
   }
 
   const status = parsedByUser.data.action === "approve" ? "approved" : "rejected";
-  const reason = parsedByUser.data.reason || "Rejected";
+  const reason = normalizeRejectionReason(parsedByUser.data.reason);
 
-  const { data: existing, error: existErr } = await admin
+  const { data: existing, error: existErr } = await supabase!
     .from("course_access")
     .select("id")
     .eq("user_id", parsedByUser.data.userId)
@@ -128,7 +136,7 @@ export async function POST(req: NextRequest) {
   if (existErr) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
 
   if (!existing?.id) {
-    const ins = await admin.from("course_access").insert({
+    const ins = await supabase!.from("course_access").insert({
       user_id: parsedByUser.data.userId,
       course_id: parsedByUser.data.courseId,
       status,
@@ -142,7 +150,7 @@ export async function POST(req: NextRequest) {
     return noStoreJson({ ok: true });
   }
 
-  const upd = await admin
+  const upd = await supabase!
     .from("course_access")
     .update({
       status,

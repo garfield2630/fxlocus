@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import bcrypt from "bcryptjs";
 
 function mustGetEnv(name: string) {
   const v = process.env[name];
@@ -21,20 +20,23 @@ function parseArgs(argv: string[]) {
   return out;
 }
 
+async function findUserIdByEmail(admin: any, email: string) {
+  const list = await admin.auth.admin.listUsers({ page: 1, perPage: 2000 });
+  if (list.error) throw new Error(list.error.message);
+  const found = list.data.users.find((u: any) => String(u.email || "").toLowerCase() === email.toLowerCase());
+  return found?.id || null;
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
-  const fullName = args.name || args.full_name || "FxLocus Admin";
-  const email = args.email || "";
-  const phone = args.phone || "";
+  const fullName = args.name || args.full_name || "FxLocus Super Admin";
+  const email = String(args.email || "").trim().toLowerCase();
+  const phone = String(args.phone || "").trim();
   const password = args.password;
 
-  if (!password) {
-    throw new Error("Missing --password");
-  }
-  if (!email && !phone) {
-    throw new Error("Provide --email or --phone");
-  }
+  if (!email) throw new Error("Missing --email");
+  if (!password) throw new Error("Missing --password");
 
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!url) throw new Error("Missing SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL");
@@ -42,61 +44,45 @@ async function main() {
 
   const admin = createClient(url, key, { auth: { persistSession: false } });
 
-  const passwordHash = await bcrypt.hash(password, 12);
-  const now = new Date().toISOString();
+  let userId: string | null = null;
+  const createRes = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: fullName, phone: phone || null }
+  });
 
-  // Idempotent: if user exists (by email/phone), reset password + promote to admin.
-  let existingId: string | null = null;
-  if (email) {
-    const { data } = await admin.from("system_users").select("id").eq("email", email).maybeSingle();
-    existingId = data?.id ?? null;
-  }
-  if (!existingId && phone) {
-    const { data } = await admin.from("system_users").select("id").eq("phone", phone).maybeSingle();
-    existingId = data?.id ?? null;
-  }
+  if (createRes.error) {
+    userId = await findUserIdByEmail(admin, email);
+    if (!userId) throw new Error(createRes.error.message);
 
-  if (existingId) {
-    const { data, error } = await admin
-      .from("system_users")
-      .update({
-        full_name: fullName,
-        email: email || null,
-        phone: phone || null,
-        password_hash: passwordHash,
-        role: "admin",
-        status: "active",
-        must_change_password: false,
-        updated_at: now
-      })
-      .eq("id", existingId)
-      .select("id")
-      .single();
-
-    if (error) throw new Error(error.message);
-    console.log(`Updated admin user: ${data.id}`);
-    return;
+    const up = await admin.auth.admin.updateUserById(userId, {
+      email,
+      password,
+      user_metadata: { full_name: fullName, phone: phone || null }
+    });
+    if (up.error) throw new Error(up.error.message);
+  } else {
+    userId = createRes.data.user?.id || null;
   }
 
-  const { data, error } = await admin
-    .from("system_users")
-    .insert({
+  if (!userId) throw new Error("FAILED_TO_RESOLVE_USER_ID");
+
+  const upProfile = await admin.from("profiles").upsert(
+    {
+      id: userId,
+      email,
       full_name: fullName,
-      email: email || null,
       phone: phone || null,
-      password_hash: passwordHash,
-      role: "admin",
-      status: "active",
-      must_change_password: false,
-      default_open_courses: 0,
-      created_at: now,
-      updated_at: now
-    })
-    .select("id")
-    .single();
+      role: "super_admin",
+      leader_id: null,
+      status: "active"
+    } as any,
+    { onConflict: "id" }
+  );
+  if (upProfile.error) throw new Error(upProfile.error.message);
 
-  if (error) throw new Error(error.message);
-  console.log(`Created admin user: ${data.id}`);
+  console.log(`Super admin ready: ${email} (${userId})`);
 }
 
 main().catch((err) => {

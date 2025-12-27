@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/system/guard";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,10 +11,9 @@ function json(payload: unknown, status = 200) {
 
 export async function GET() {
   try {
-    await requireAdmin();
-    const admin = supabaseAdmin();
+    const { supabase } = await requireAdmin();
 
-    const q = await admin
+    const q = await supabase
       .from("file_access_requests")
       .select("user_id,file_id,status,requested_at")
       .eq("status", "requested")
@@ -30,10 +28,10 @@ export async function GET() {
 
     const [usersRes, filesRes] = await Promise.all([
       userIds.length
-        ? admin.from("system_users").select("id,full_name,email,phone").in("id", userIds)
+        ? supabase.from("profiles").select("id,full_name,email,phone").in("id", userIds)
         : Promise.resolve({ data: [], error: null } as any),
       fileIds.length
-        ? admin
+        ? supabase
             .from("files")
             .select("id,category,name,description,size_bytes,mime_type,created_at")
             .in("id", fileIds)

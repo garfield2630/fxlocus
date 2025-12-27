@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireAdmin } from "@/lib/system/guard";
-import { isSuperAdmin, type SystemRole } from "@/lib/system/roles";
-import { hashPassword } from "@/lib/system/password";
+import { requireSuperAdmin } from "@/lib/system/guard";
 import { isStrongSystemPassword } from "@/lib/system/passwordPolicy";
-import { getIpFromHeaders, getUserAgent, parseDevice } from "@/lib/system/requestMeta";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -39,16 +36,8 @@ function randomStrongPassword(length = 12) {
 }
 
 export async function POST(req: NextRequest, ctx: { params: { userId: string } }) {
-  const ip = getIpFromHeaders(req.headers);
-  const ua = getUserAgent(req.headers);
-  const device = parseDevice(ua);
-
-  let adminUserId = "";
-  let adminRole: SystemRole | null = null;
   try {
-    const { user } = await requireAdmin();
-    adminUserId = user.id;
-    adminRole = user.role;
+    await requireSuperAdmin();
   } catch (e: any) {
     const code = String(e?.code || "UNAUTHORIZED");
     const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
@@ -66,47 +55,20 @@ export async function POST(req: NextRequest, ctx: { params: { userId: string } }
     return noStoreJson({ ok: false, error: "WEAK_PASSWORD" }, 400);
   }
 
-  const passwordHash = await hashPassword(nextPassword);
   const admin = supabaseAdmin();
-  const now = new Date().toISOString();
 
   const { data: target, error: targetErr } = await admin
-    .from("system_users")
+    .from("profiles")
     .select("id,role")
     .eq("id", userId)
     .maybeSingle();
-  if (targetErr || !target) return noStoreJson({ ok: false, error: "NOT_FOUND" }, 404);
-  if (!adminRole || (!isSuperAdmin(adminRole) && target.role !== "student")) {
-    return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
-  }
 
-  const { error } = await admin
-    .from("system_users")
-    .update({
-      password_hash: passwordHash,
-      must_change_password: false,
-      password_updated_at: now,
-      password_updated_by: adminUserId,
-      password_updated_reason: "admin_reset",
-      updated_at: now
-    } as any)
-    .eq("id", userId);
-  if (error) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
+  if (targetErr) return noStoreJson({ ok: false, error: targetErr.message }, 500);
+  if (!target?.id) return noStoreJson({ ok: false, error: "NOT_FOUND" }, 404);
+  if (target.role !== "student") return noStoreJson({ ok: false, error: "FORBIDDEN" }, 403);
 
-  await admin
-    .from("system_sessions")
-    .update({ revoked_at: now, revoke_reason: "password_reset" })
-    .eq("user_id", userId)
-    .is("revoked_at", null);
-
-  await admin.from("system_login_logs").insert({
-    user_id: userId,
-    event: "password_changed",
-    ip,
-    user_agent: ua,
-    device,
-    meta: { by: adminUserId, admin_reset: true }
-  });
+  const up = await admin.auth.admin.updateUserById(userId, { password: nextPassword });
+  if (up.error) return noStoreJson({ ok: false, error: up.error.message }, 500);
 
   return noStoreJson({ ok: true, newPassword: nextPassword });
 }

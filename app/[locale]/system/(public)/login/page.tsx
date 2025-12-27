@@ -3,18 +3,21 @@
 import React from "react";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 
+import { SliderCaptcha } from "@/components/system/SliderCaptcha";
 import { isAdminRole } from "@/lib/system/roles";
 
 type LoginResponse =
-  | { ok: true; user: { id: string; full_name: string; role: "admin" | "student" | "super_admin" } }
+  | { ok: true; user: { id: string; full_name: string | null; role: "student" | "leader" | "super_admin" } }
   | { ok: false; error: string };
 
 export default function SystemLoginPage({ params }: { params: { locale: "zh" | "en" } }) {
   const locale = params.locale === "en" ? "en" : "zh";
   const [identifier, setIdentifier] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [loginRole, setLoginRole] = React.useState<"student" | "leader" | "super_admin">("student");
   const [showPassword, setShowPassword] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+  const [captchaOk, setCaptchaOk] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -41,16 +44,29 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!captchaOk) {
+      setError(locale === "zh" ? "请先完成滑块验证" : "Complete the slider verification first.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/system/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ identifier, password })
+        body: JSON.stringify({ identifier, password, role: loginRole })
       });
       const json = (await res.json().catch(() => null)) as LoginResponse | null;
       if (!res.ok || !json?.ok) {
-        setError(locale === "zh" ? "登录失败，请检查账号或密码" : "Sign in failed.");
+        const code = String((json as any)?.error || "");
+        if (code === "ROLE_MISMATCH") {
+          setError(locale === "zh" ? "账号类型不匹配" : "Account type mismatch.");
+        } else if (code === "INVALID_EMAIL") {
+          setError(locale === "zh" ? "邮箱格式不正确" : "Invalid email format.");
+        } else if (code === "INVALID_CREDENTIALS") {
+          setError(locale === "zh" ? "邮箱或密码错误" : "Invalid credentials.");
+        } else {
+          setError(locale === "zh" ? "登录失败，请稍后重试" : "Sign in failed.");
+        }
         return;
       }
 
@@ -97,6 +113,27 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
             </div>
 
             <div className="mt-6 space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { v: "student", zh: "学员", en: "Student" },
+                  { v: "leader", zh: "团队长", en: "Leader" },
+                  { v: "super_admin", zh: "超管", en: "Super Admin" }
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setLoginRole(opt.v)}
+                    className={[
+                      "rounded-2xl border px-3 py-2 text-sm transition-colors",
+                      loginRole === opt.v
+                        ? "bg-white/10 border-white/20 text-white"
+                        : "bg-white/5 border-white/10 text-white/70 hover:bg-white/8 hover:text-white"
+                    ].join(" ")}
+                  >
+                    {locale === "zh" ? opt.zh : opt.en}
+                  </button>
+                ))}
+              </div>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
                 <input
@@ -104,7 +141,7 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full rounded-2xl bg-white/5 border border-white/10 px-10 py-3 text-white/85 text-sm focus:outline-none focus:border-white/30"
-                  placeholder={locale === "zh" ? "邮箱或手机号" : "Email or phone"}
+                  placeholder={locale === "zh" ? "邮箱" : "Email"}
                   autoComplete="off"
                   required
                 />
@@ -130,11 +167,12 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              <SliderCaptcha locale={locale} onChange={setCaptchaOk} />
             </div>
 
             <button
               type="submit"
-              disabled={loading || !identifier.trim() || !password.trim()}
+              disabled={loading || !identifier.trim() || !password.trim() || !captchaOk}
               className="mt-6 w-full px-4 py-3 rounded-2xl bg-white/10 border border-white/20 text-white hover:bg-white/15 disabled:opacity-50"
             >
               {loading ? (locale === "zh" ? "登录中..." : "Signing in...") : locale === "zh" ? "登录" : "Sign in"}

@@ -1,6 +1,16 @@
 "use client";
 
 import React from "react";
+import { FileText, FileVideo, UploadCloud } from "lucide-react";
+
+function ContentIcon({ mimeType }: { mimeType: string | null | undefined }) {
+  const mime = String(mimeType || "").toLowerCase();
+  if (mime.startsWith("video/") || mime.includes("mp4")) return <FileVideo className="h-4 w-4 text-white/70" />;
+  if (mime.includes("pdf") || mime.includes("msword") || mime.includes("officedocument")) {
+    return <FileText className="h-4 w-4 text-white/70" />;
+  }
+  return <FileText className="h-4 w-4 text-white/70" />;
+}
 
 type CourseRow = {
   id: number;
@@ -171,8 +181,11 @@ export function AdminCourseContentClient({
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="text-xs text-white/50">{locale === "zh" ? "内容" : "Content"}</div>
-                  <div className="mt-2 text-sm text-white/80 break-all">
-                    {c.content_file_name || c.content_path || (locale === "zh" ? "未上传" : "Not uploaded")}
+                  <div className="mt-2 flex items-center gap-2 text-sm text-white/80 min-w-0">
+                    {c.content_path ? <ContentIcon mimeType={c.content_mime_type} /> : <UploadCloud className="h-4 w-4 text-white/70" />}
+                    <span className="min-w-0 truncate">
+                      {c.content_file_name || c.content_path || (locale === "zh" ? "未上传" : "Not uploaded")}
+                    </span>
                   </div>
                   {c.content_path ? (
                     <div className="mt-2 text-xs text-white/45 break-all">
@@ -184,11 +197,25 @@ export function AdminCourseContentClient({
                 <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
                   <div className="text-xs text-white/50">{locale === "zh" ? "上传/替换内容" : "Upload/replace"}</div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      type="file"
-                      onChange={(e) => setFileById((p) => ({ ...p, [c.id]: e.target.files?.[0] || null }))}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/70 text-sm"
-                    />
+                    <label
+                      className={[
+                        "flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/70 text-sm",
+                        isBusy ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:bg-white/10"
+                      ].join(" ")}
+                      title={locale === "zh" ? "仅允许 doc/docx/pdf/mp4" : "Only doc/docx/pdf/mp4"}
+                    >
+                      {fileById[c.id] ? <ContentIcon mimeType={fileById[c.id]?.type} /> : <UploadCloud className="h-4 w-4 text-white/70" />}
+                      <span className="max-w-[360px] truncate">
+                        {fileById[c.id]?.name || (locale === "zh" ? "选择文件（doc/docx/pdf/mp4）" : "Choose file (doc/docx/pdf/mp4)")}
+                      </span>
+                      <input
+                        type="file"
+                        disabled={isBusy}
+                        onChange={(e) => setFileById((p) => ({ ...p, [c.id]: e.target.files?.[0] || null }))}
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,.mp4,application/pdf,video/mp4,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      />
+                    </label>
                     <button
                       type="button"
                       disabled={isBusy || !fileById[c.id]}

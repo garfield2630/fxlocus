@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getSystemAuth } from "@/lib/system/auth";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
+import { requireSystemUser } from "@/lib/system/guard";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const Body = z.object({
   fullName: z.string().min(1).max(120).optional(),
@@ -16,19 +16,26 @@ function noStoreJson(payload: unknown, status = 200) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await getSystemAuth();
-  if (!auth.ok) return noStoreJson({ ok: false, error: auth.reason }, 401);
+  let userId = "";
+  let supabase: Awaited<ReturnType<typeof requireSystemUser>>["supabase"];
+  try {
+    const ctx = await requireSystemUser();
+    userId = ctx.user.id;
+    supabase = ctx.supabase;
+  } catch (e: any) {
+    const code = String(e?.code || "UNAUTHORIZED");
+    const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
+    return noStoreJson({ ok: false, error: code }, status);
+  }
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return noStoreJson({ ok: false, error: "INVALID_BODY" }, 400);
 
-  const admin = supabaseAdmin();
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (parsed.data.fullName !== undefined) payload.full_name = parsed.data.fullName;
   if (parsed.data.phone !== undefined) payload.phone = parsed.data.phone;
 
-  const { error } = await admin.from("system_users").update(payload).eq("id", auth.user.id);
-  if (error) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
+  const { error } = await supabase!.from("profiles").update(payload).eq("id", userId);
+  if (error) return noStoreJson({ ok: false, error: error.message }, 500);
   return noStoreJson({ ok: true });
 }
-

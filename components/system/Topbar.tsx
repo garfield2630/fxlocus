@@ -7,7 +7,7 @@ import type { SystemRole } from "@/lib/system/roles";
 
 type Props = {
   locale: "zh" | "en";
-  user: { full_name: string; role: SystemRole };
+  user: { full_name: string | null; role: SystemRole };
 };
 
 function swapLocale(pathname: string, nextLocale: "zh" | "en") {
@@ -34,18 +34,18 @@ export function Topbar({ locale, user }: Props) {
   };
 
   return (
-    <div className="h-14 border-b border-white/10 bg-white/5 backdrop-blur px-4 flex items-center gap-3">
-      <div className="text-white/80 text-sm">
-        {user.full_name}
-        <span className="ml-2 text-white/40 text-xs">
-          {user.role === "super_admin"
-            ? locale === "zh"
-              ? "超级管理员"
-              : "Super Admin"
-            : user.role === "admin"
+      <div className="h-14 border-b border-white/10 bg-white/5 backdrop-blur px-4 flex items-center gap-3">
+        <div className="text-white/80 text-sm">
+          {user.full_name || (locale === "zh" ? "用户" : "User")}
+          <span className="ml-2 text-white/40 text-xs">
+            {user.role === "super_admin"
               ? locale === "zh"
-                ? "管理员"
-                : "Admin"
+                ? "超级管理员"
+              : "Super Admin"
+            : user.role === "leader"
+              ? locale === "zh"
+                ? "团队长"
+                : "Leader"
               : locale === "zh"
                 ? "学员"
                 : "Student"}

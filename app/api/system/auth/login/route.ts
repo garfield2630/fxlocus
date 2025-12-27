@@ -1,173 +1,76 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
-import { SYSTEM_COOKIE } from "@/lib/system/auth";
-import { signSystemJwt } from "@/lib/system/jwt";
-import { verifyPassword } from "@/lib/system/password";
-import { getIpFromHeaders, getUserAgent, parseDevice } from "@/lib/system/requestMeta";
+import { createSupabaseServerClient } from "@/lib/supabase/ssr";
+import type { SystemRole } from "@/lib/system/roles";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const Body = z.object({
-  identifier: z.string().min(3),
-  password: z.string().min(6)
+  email: z.string().email().optional(),
+  identifier: z.string().min(3).optional(),
+  password: z.string().min(6).max(128),
+  role: z.enum(["student", "leader", "super_admin"])
 });
 
-function normalizeIdentifier(identifier: string) {
-  const trimmed = identifier.trim();
-  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
-  return isEmail ? trimmed.toLowerCase() : trimmed;
-}
-
-function escapeOrValue(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
-
-function cookieOptions() {
-  const isProd = process.env.NODE_ENV === "production";
-  return {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: "lax" as const,
-    path: "/",
-    maxAge: 2 * 60 * 60
-  };
+function json(payload: unknown, status = 200) {
+  return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(req: Request) {
-  const ip = getIpFromHeaders(req.headers);
-  const ua = getUserAgent(req.headers);
-  const device = parseDevice(ua);
+  const raw = await req.json().catch(() => null);
+  const parsed = Body.safeParse(raw);
+  if (!parsed.success) return json({ ok: false, error: "INVALID_BODY" }, 400);
 
-  const json = await req.json().catch(() => null);
-  const parsed = Body.safeParse(json);
-  if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
-  }
+  const email = String(parsed.data.email || parsed.data.identifier || "")
+    .trim()
+    .toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ ok: false, error: "INVALID_EMAIL" }, 400);
 
-  const identifier = normalizeIdentifier(parsed.data.identifier);
-  const password = parsed.data.password;
+  const expectedRole = parsed.data.role as SystemRole;
 
-  const admin = supabaseAdmin();
-
-  const orValue = escapeOrValue(identifier);
-  const { data: user } = await admin
-    .from("system_users")
-    .select("*")
-    .or(`email.eq."${orValue}",phone.eq."${orValue}"`)
-    .maybeSingle();
-
-  if (!user) {
-    await admin.from("system_login_logs").insert({
-      user_id: null,
-      event: "login_failed",
-      ip,
-      user_agent: ua,
-      device,
-      meta: { identifier, reason: "NO_USER" }
+  try {
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: parsed.data.password
     });
-    return NextResponse.json({ ok: false, error: "INVALID_CREDENTIALS" }, { status: 401 });
-  }
 
-  if (user.status !== "active") {
-    await admin.from("system_login_logs").insert({
-      user_id: user.id,
-      event: "account_frozen",
-      ip,
-      user_agent: ua,
-      device
-    });
-    return NextResponse.json({ ok: false, error: "ACCOUNT_FROZEN" }, { status: 403 });
-  }
+    if (error || !data.user?.id) {
+      return json({ ok: false, error: "INVALID_CREDENTIALS" }, 401);
+    }
 
-  const passOk = await verifyPassword(password, user.password_hash);
-  if (!passOk) {
-    await admin.from("system_login_logs").insert({
-      user_id: user.id,
-      event: "login_failed",
-      ip,
-      user_agent: ua,
-      device,
-      meta: { reason: "BAD_PASSWORD" }
-    });
-    return NextResponse.json({ ok: false, error: "INVALID_CREDENTIALS" }, { status: 401 });
-  }
+    const { data: profile, error: profileErr } = await supabase
+      .from("profiles")
+      .select("id,full_name,role,status")
+      .eq("id", data.user.id)
+      .maybeSingle();
 
-  const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
-  const { data: session, error: sessErr } = await admin
-    .from("system_sessions")
-    .insert({
-      user_id: user.id,
-      expires_at: expiresAt,
-      ip,
-      user_agent: ua,
-      device
-    })
-    .select("id, issued_at")
-    .single();
+    if (profileErr || !profile?.id) {
+      await supabase.auth.signOut();
+      return json({ ok: false, error: "NO_PROFILE" }, 403);
+    }
 
-  if (sessErr || !session?.id) {
-    return NextResponse.json({ ok: false, error: "SESSION_CREATE_FAILED" }, { status: 500 });
-  }
+    if ((profile as any).status === "frozen") {
+      await supabase.auth.signOut();
+      return json({ ok: false, error: "ACCOUNT_FROZEN" }, 403);
+    }
 
-  const { data: sessions } = await admin
-    .from("system_sessions")
-    .select("id, issued_at")
-    .eq("user_id", user.id)
-    .is("revoked_at", null)
-    .gt("expires_at", new Date().toISOString())
-    .order("issued_at", { ascending: false });
+    if (profile.role !== expectedRole) {
+      await supabase.auth.signOut();
+      return json({ ok: false, error: "ROLE_MISMATCH" }, 403);
+    }
 
-  if (sessions && sessions.length > 2) {
-    const revokeIds = sessions.slice(2).map((s) => s.id);
-    await admin
-      .from("system_sessions")
-      .update({
-        revoked_at: new Date().toISOString(),
-        revoke_reason: "max_concurrent"
-      })
-      .in("id", revokeIds);
-
-    await admin.from("system_login_logs").insert({
-      user_id: user.id,
-      event: "session_revoked",
-      ip,
-      user_agent: ua,
-      device,
-      meta: { revokeIds }
-    });
-  }
-
-  await admin.from("system_login_logs").insert({
-    user_id: user.id,
-    event: "login_success",
-    ip,
-    user_agent: ua,
-    device
-  });
-
-  await admin.from("system_users").update({ last_login_at: new Date().toISOString() }).eq("id", user.id);
-
-  const token = await signSystemJwt({
-    sub: user.id,
-    sid: session.id,
-    role: user.role
-  });
-
-  const res = NextResponse.json(
-    {
+    return json({
       ok: true,
       user: {
-        id: user.id,
-        full_name: user.full_name,
-        role: user.role
+        id: profile.id,
+        full_name: profile.full_name,
+        role: profile.role
       }
-    },
-    { headers: { "Cache-Control": "no-store" } }
-  );
-
-  res.cookies.set(SYSTEM_COOKIE, token, cookieOptions());
-  return res;
+    });
+  } catch (e: any) {
+    return json({ ok: false, error: e?.message || "LOGIN_FAILED" }, 500);
+  }
 }
-

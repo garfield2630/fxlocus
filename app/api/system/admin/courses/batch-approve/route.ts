@@ -2,7 +2,6 @@
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/system/guard";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,9 +18,11 @@ function noStoreJson(payload: unknown, status = 200) {
 
 export async function POST(req: NextRequest) {
   let adminUserId = "";
+  let supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"];
   try {
     const ctx = await requireAdmin();
     adminUserId = ctx.user.id;
+    supabase = ctx.supabase;
   } catch (e: any) {
     const code = String(e?.code || "UNAUTHORIZED");
     const status = code === "FORBIDDEN" ? 403 : code === "FROZEN" ? 403 : 401;
@@ -31,10 +32,9 @@ export async function POST(req: NextRequest) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return noStoreJson({ ok: false, error: "INVALID_BODY" }, 400);
 
-  const admin = supabaseAdmin();
   const now = new Date().toISOString();
 
-  let selectQuery = admin
+  let selectQuery = supabase!
     .from("course_access")
     .select("user_id,course_id")
     .eq("status", "requested");
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   const { data: targets, error: selErr } = await selectQuery.limit(2000);
   if (selErr) return noStoreJson({ ok: false, error: "DB_ERROR" }, 500);
 
-  let updateQuery = admin
+  let updateQuery = supabase!
     .from("course_access")
     .update({
       status: "approved",
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
   const courseIds = Array.from(new Set((targets || []).map((t: any) => Number(t.course_id)).filter(Boolean)));
   const { data: courses } = courseIds.length
-    ? await admin.from("courses").select("id,title_zh,title_en").in("id", courseIds)
+    ? await supabase!.from("courses").select("id,title_zh,title_en").in("id", courseIds)
     : { data: [] as any[] };
   const courseById = new Map((courses || []).map((c: any) => [c.id, c]));
 
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
   });
 
   if (notifications.length) {
-    const ins = await admin.from("notifications").insert(notifications as any);
+    const ins = await supabase!.from("notifications").insert(notifications as any);
     if (ins.error) return noStoreJson({ ok: false, error: "NOTIFY_FAILED" }, 500);
   }
 

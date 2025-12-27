@@ -10,6 +10,9 @@ type RequestItem = {
   file?: { id: string; category?: string | null; name?: string | null; description?: string | null } | null;
 };
 
+const REJECTION_REASONS = ["资料不完整", "不符合要求", "名额已满", "重复申请", "其他"] as const;
+type RejectionReason = (typeof REJECTION_REASONS)[number];
+
 export function AdminFileRequestsClient({ locale }: { locale: "zh" | "en" }) {
   const [items, setItems] = React.useState<RequestItem[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -20,7 +23,7 @@ export function AdminFileRequestsClient({ locale }: { locale: "zh" | "en" }) {
   const [filterStudent, setFilterStudent] = React.useState("");
   const [filterFile, setFilterFile] = React.useState("");
   const [rejectReason, setRejectReason] = React.useState<Record<string, string>>({});
-  const [bulkRejectReason, setBulkRejectReason] = React.useState("");
+  const [bulkRejectReason, setBulkRejectReason] = React.useState<RejectionReason>("其他");
 
   const keyOf = React.useCallback((it: Pick<RequestItem, "user_id" | "file_id">) => `${it.user_id}:${it.file_id}`, []);
 
@@ -117,7 +120,7 @@ export function AdminFileRequestsClient({ locale }: { locale: "zh" | "en" }) {
         action,
         reason: action === "reject" ? rejectReason[k] || undefined : undefined
       });
-      setRejectReason((p) => ({ ...p, [k]: "" }));
+      setRejectReason((p) => ({ ...p, [k]: "其他" }));
       await load();
     } catch (e: any) {
       setError(e?.message || "update_failed");
@@ -134,10 +137,10 @@ export function AdminFileRequestsClient({ locale }: { locale: "zh" | "en" }) {
       await reviewBulk({
         items: selectedItems.map((it) => ({ userId: it.user_id, fileId: it.file_id })),
         action,
-        reason: action === "reject" ? bulkRejectReason || undefined : undefined
+        reason: action === "reject" ? bulkRejectReason : undefined
       });
       setSelected(new Set());
-      setBulkRejectReason("");
+      setBulkRejectReason("其他");
       await load();
     } catch (e: any) {
       setError(e?.message || "update_failed");
@@ -227,12 +230,17 @@ export function AdminFileRequestsClient({ locale }: { locale: "zh" | "en" }) {
           >
             {locale === "zh" ? `拒绝已选(${selectedItems.length})` : `Reject (${selectedItems.length})`}
           </button>
-          <input
+          <select
             value={bulkRejectReason}
-            onChange={(e) => setBulkRejectReason(e.target.value)}
+            onChange={(e) => setBulkRejectReason(e.target.value as RejectionReason)}
             className="min-w-[220px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/85"
-            placeholder={locale === "zh" ? "批量拒绝原因（可选）" : "Bulk reject reason (optional)"}
-          />
+          >
+            {REJECTION_REASONS.map((r) => (
+              <option key={r} value={r}>
+                {locale === "zh" ? `拒绝原因：${r}` : `Reason: ${r}`}
+              </option>
+            ))}
+          </select>
         </div>
 
         {loading ? (
@@ -283,12 +291,17 @@ export function AdminFileRequestsClient({ locale }: { locale: "zh" | "en" }) {
                   >
                     {locale === "zh" ? "拒绝" : "Reject"}
                   </button>
-                  <input
-                    value={rejectReason[k] || ""}
+                  <select
+                    value={(rejectReason[k] || "其他") as RejectionReason}
                     onChange={(e) => setRejectReason((p) => ({ ...p, [k]: e.target.value }))}
                     className="ml-auto min-w-[240px] rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/85"
-                    placeholder={locale === "zh" ? "拒绝原因（可选）" : "Reject reason (optional)"}
-                  />
+                  >
+                    {REJECTION_REASONS.map((r) => (
+                      <option key={r} value={r}>
+                        {locale === "zh" ? `拒绝原因：${r}` : `Reason: ${r}`}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             );

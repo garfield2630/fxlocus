@@ -20,19 +20,20 @@ export default function AdminSettingsPage({ params }: { params: { locale: "zh" |
         </div>
       </div>
 
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/70 leading-7">
-        <div className="text-white/85 font-semibold mb-2">
-          {locale === "zh" ? "环境变量检查" : "Environment variables"}
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/70 leading-7">
+          <div className="text-white/85 font-semibold mb-2">
+            {locale === "zh" ? "环境变量检查" : "Environment variables"}
+          </div>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>NEXT_PUBLIC_SUPABASE_URL</li>
+            <li>NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
+            <li>SUPABASE_SERVICE_ROLE_KEY</li>
+            <li>SYSTEM_FILES_BUCKET (optional)</li>
+            <li>RESEND_API_KEY (optional)</li>
+            <li>APP_BASE_URL (optional)</li>
+          </ul>
         </div>
-        <ul className="list-disc pl-5 space-y-1">
-          <li>SUPABASE_URL</li>
-          <li>SUPABASE_SERVICE_ROLE_KEY</li>
-          <li>SYSTEM_JWT_SECRET</li>
-          <li>RESEND_API_KEY (optional)</li>
-          <li>APP_BASE_URL (optional)</li>
-        </ul>
       </div>
-    </div>
   );
 }
 

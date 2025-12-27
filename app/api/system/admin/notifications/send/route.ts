@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/system/guard";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,8 +18,7 @@ function json(payload: unknown, status = 200) {
 
 export async function POST(req: Request) {
   try {
-    const { user } = await requireAdmin();
-    const admin = supabaseAdmin();
+    const { user, supabase } = await requireAdmin();
     const raw = await req.json().catch(() => null);
     const parsed = Body.safeParse(raw);
     if (!parsed.success) return json({ ok: false, error: "INVALID_BODY" }, 400);
@@ -32,7 +30,7 @@ export async function POST(req: Request) {
       content: parsed.data.content ?? null
     }));
 
-    const ins = await admin.from("notifications").insert(rows);
+    const ins = await supabase.from("notifications").insert(rows);
     if (ins.error) return json({ ok: false, error: ins.error.message }, 500);
     return json({ ok: true });
   } catch (e: any) {

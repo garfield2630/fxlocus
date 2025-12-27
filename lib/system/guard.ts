@@ -1,28 +1,18 @@
-import { cookies } from "next/headers";
-
-import { SYSTEM_COOKIE } from "@/lib/system/auth";
+import { createSupabaseServerClient } from "@/lib/supabase/ssr";
 import { isAdminRole, isSuperAdmin, type SystemRole } from "@/lib/system/roles";
-import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
-import { verifySystemJwt } from "@/lib/system/jwt";
 
 export type SystemStatus = "active" | "frozen";
 export type { SystemRole };
 
 export type SystemUserSafe = {
   id: string;
-  full_name: string;
-  email: string | null;
+  email: string;
+  full_name: string | null;
   phone: string | null;
   role: SystemRole;
+  leader_id: string | null;
+  student_status: "普通学员" | "考核通过" | "学习中" | "捐赠学员";
   status: SystemStatus;
-};
-
-type JwtPayload = {
-  sub: string; // user id
-  sid: string; // session id
-  role: SystemRole;
-  iat?: number;
-  exp?: number;
 };
 
 function err(code: string) {
@@ -31,49 +21,45 @@ function err(code: string) {
   return e;
 }
 
-export async function getSystemContext(): Promise<
-  | { user: SystemUserSafe; sessionId: string; token: string }
-  | null
-> {
-  const token = cookies().get(SYSTEM_COOKIE)?.value;
-  if (!token) return null;
+export async function getSystemContext(): Promise<{ user: SystemUserSafe; supabase: ReturnType<typeof createSupabaseServerClient> }> {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user: authUser }
+  } = await supabase.auth.getUser();
 
-  const payload = (await verifySystemJwt(token).catch(() => null)) as JwtPayload | null;
-  if (!payload?.sub || !payload?.sid || !payload?.role) return null;
+  if (!authUser?.id) throw err("UNAUTHORIZED");
 
-  const admin = supabaseAdmin();
-
-  const { data: sess } = await admin
-    .from("system_sessions")
-    .select("id,user_id,expires_at,revoked_at")
-    .eq("id", payload.sid)
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("id,email,full_name,phone,role,leader_id,student_status,status")
+    .eq("id", authUser.id)
     .maybeSingle();
 
-  if (!sess) return null;
-  if (sess.user_id !== payload.sub) return null;
-  if (sess.revoked_at) return null;
-  if (new Date(sess.expires_at).getTime() <= Date.now()) return null;
+  if (error) throw err("UNAUTHORIZED");
+  if (!profile?.id) throw err("UNAUTHORIZED");
 
-  const { data: user } = await admin
-    .from("system_users")
-    .select("id,full_name,email,phone,role,status")
-    .eq("id", payload.sub)
-    .maybeSingle();
+  const email = String(profile.email || authUser.email || "").trim().toLowerCase();
+  if (!email) throw err("UNAUTHORIZED");
 
-  if (!user) return null;
-  if (user.role !== payload.role) return null;
+  if ((profile as any).status === "frozen") throw err("FROZEN");
 
   return {
-    token,
-    sessionId: payload.sid,
-    user: user as SystemUserSafe
+    supabase,
+    user: {
+      id: profile.id,
+      email,
+      full_name: (profile as any).full_name ?? null,
+      phone: (profile as any).phone ?? null,
+      role: profile.role as SystemRole,
+      leader_id: (profile as any).leader_id ?? null,
+      student_status: profile.student_status as any,
+      status: ((profile as any).status ?? "active") as SystemStatus
+    }
   };
 }
 
 export async function requireSystemUser() {
   const ctx = await getSystemContext();
-  if (!ctx) throw err("UNAUTHORIZED");
-  if (ctx.user.status !== "active") throw err("FROZEN");
   return ctx;
 }
 

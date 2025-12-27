@@ -7,6 +7,31 @@ import { randomUUID } from "crypto";
 import { requireAdmin } from "@/lib/system/guard";
 import { supabaseAdmin } from "@/lib/system/supabaseAdmin";
 
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "video/mp4"
+]);
+
+const ALLOWED_EXTENSIONS = new Set(["pdf", "doc", "docx", "mp4"]);
+
+function fileTypeFrom(file: File) {
+  const name = String(file.name || "").toLowerCase();
+  const ext = name.includes(".") ? name.split(".").pop() || "" : "";
+  if (ext === "pdf") return "pdf";
+  if (ext === "doc") return "doc";
+  if (ext === "docx") return "docx";
+  if (ext === "mp4") return "mp4";
+
+  const mime = String(file.type || "").toLowerCase();
+  if (mime.includes("pdf")) return "pdf";
+  if (mime.includes("msword")) return "doc";
+  if (mime.includes("officedocument")) return "docx";
+  if (mime.includes("mp4")) return "mp4";
+  return null;
+}
+
 function safeSegment(input: string) {
   const s = (input || "").trim().toLowerCase();
   const cleaned = s.replace(/[^a-z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
@@ -41,6 +66,15 @@ export async function POST(req: Request) {
 
     if (!(file instanceof File)) {
       return NextResponse.json({ ok: false, error: "MISSING_FILE" }, { status: 400 });
+    }
+
+    const ext = String(file.name || "")
+      .toLowerCase()
+      .split(".")
+      .pop();
+    const mime = String(file.type || "").toLowerCase();
+    if ((!ext || !ALLOWED_EXTENSIONS.has(ext)) && !ALLOWED_MIME_TYPES.has(mime)) {
+      return NextResponse.json({ ok: false, error: "INVALID_FILE_TYPE" }, { status: 400 });
     }
 
     const bucketCandidates = [
@@ -93,6 +127,7 @@ export async function POST(req: Request) {
         storage_path: path,
         size_bytes: file.size,
         mime_type: file.type || null,
+        file_type: fileTypeFrom(file),
         uploaded_by: user.id
       })
       .select("*")
