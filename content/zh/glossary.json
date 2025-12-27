@@ -8,8 +8,7 @@
     "misconceptions": ["把闸门当成限制机会", "只写闸门，不执行 Fail 规则"],
     "frameworkNote": "闸门把冲动从执行链路中隔离出来，让表达建立在结构、证伪与风险边界上。",
     "related": [
-      { "label": "文章：执行闸门", "href": "/insights/execution-gate" },
-      { "label": "System Lite：执行闸门", "href": "/trade-system/app" }
+      { "label": "文章：执行闸门", "href": "/insights/execution-gate" }
     ]
   },
   {
@@ -89,8 +88,7 @@
     "term": "执行评分卡",
     "oneLiner": "用可量化维度评估一致性，而不是凭感觉。",
     "misconceptions": ["评分卡是形式主义", "只看结果，不看过程"],
-    "frameworkNote": "评分卡让复盘有抓手：闸门/风险/证据/退出/复盘质量可以被审计。",
-    "related": [{ "label": "System Lite：Scorecard", "href": "/trade-system/app" }]
+    "frameworkNote": "评分卡让复盘有抓手：闸门/风险/证据/退出/复盘质量可以被审计。"
   },
   {
     "locale": "zh",
@@ -99,8 +97,7 @@
     "term": "记录（Journaling）",
     "oneLiner": "把交易变成证据链：可复盘、可审计、可迭代。",
     "misconceptions": ["记录会影响执行", "只记录入场点位"],
-    "frameworkNote": "记录的核心字段不是点位，是“你为什么这样做”，以及“你如何承认失败”。",
-    "related": [{ "label": "System Lite：Trade Log", "href": "/trade-system/app" }]
+    "frameworkNote": "记录的核心字段不是点位，是“你为什么这样做”，以及“你如何承认失败”。"
   },
   {
     "locale": "zh",

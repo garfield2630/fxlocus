@@ -8,8 +8,7 @@
     "misconceptions": ["A gate limits opportunities", "Writing a gate is the same as enforcing it"],
     "frameworkNote": "A gate removes impulse from the decision chain and forces structure, falsification, and risk boundaries.",
     "related": [
-      { "label": "Insight: Execution gate", "href": "/insights/execution-gate" },
-      { "label": "System Lite: Gate", "href": "/trade-system/app" }
+      { "label": "Insight: Execution gate", "href": "/insights/execution-gate" }
     ]
   },
   {
@@ -89,8 +88,7 @@
     "term": "Execution scorecard",
     "oneLiner": "A measurable way to judge consistency—without relying on feelings.",
     "misconceptions": ["It’s bureaucracy", "Only results matter"],
-    "frameworkNote": "Score gate, risk, evidence, exits, and review quality—so discipline becomes auditable.",
-    "related": [{ "label": "System Lite: Scorecard", "href": "/trade-system/app" }]
+    "frameworkNote": "Score gate, risk, evidence, exits, and review quality—so discipline becomes auditable."
   },
   {
     "locale": "en",
@@ -99,8 +97,7 @@
     "term": "Journaling",
     "oneLiner": "Turn trading into an evidence chain: reviewable, auditable, iteratable.",
     "misconceptions": ["Journaling slows execution", "Only log prices"],
-    "frameworkNote": "The core fields are 'why' and 'how you admit failure'.",
-    "related": [{ "label": "System Lite: Trade log", "href": "/trade-system/app" }]
+    "frameworkNote": "The core fields are 'why' and 'how you admit failure'."
   },
   {
     "locale": "en",
