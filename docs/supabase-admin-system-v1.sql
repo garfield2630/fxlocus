@@ -19,6 +19,46 @@ do $$ begin
   create type public.file_type as enum ('doc', 'docx', 'pdf', 'mp4');
 exception when duplicate_object then null; end $$;
 
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text unique,
+  full_name text,
+  phone text,
+  role public.user_role not null default 'student',
+  leader_id uuid references public.profiles(id) on delete set null,
+  student_status public.student_status not null default '普通学员',
+  status text not null default 'active',
+  avatar_url text,
+  last_login_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.profiles
+  add column if not exists status text,
+  add column if not exists last_login_at timestamptz;
+
+update public.profiles set status = 'active' where status is null;
+alter table public.profiles alter column status set default 'active';
+alter table public.profiles alter column status set not null;
+
+do $$ begin
+  alter table public.profiles
+    add constraint profiles_leader_only_for_students
+    check (role = 'student' or leader_id is null);
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  alter table public.profiles
+    add constraint profiles_account_status_check
+    check (status in ('active', 'frozen'));
+exception when duplicate_object then null; end $$;
+
+create index if not exists profiles_role_idx on public.profiles (role);
+create index if not exists profiles_leader_idx on public.profiles (leader_id);
+create index if not exists profiles_email_idx on public.profiles (email);
+create index if not exists profiles_status_idx on public.profiles (status);
+
 create or replace function public.is_super_admin()
 returns boolean
 language sql
@@ -134,46 +174,6 @@ as $$
       and p.status is not distinct from new_account_status
   );
 $$;
-
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  email text unique,
-  full_name text,
-  phone text,
-  role public.user_role not null default 'student',
-  leader_id uuid references public.profiles(id) on delete set null,
-  student_status public.student_status not null default '普通学员',
-  status text not null default 'active',
-  avatar_url text,
-  last_login_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-alter table public.profiles
-  add column if not exists status text,
-  add column if not exists last_login_at timestamptz;
-
-update public.profiles set status = 'active' where status is null;
-alter table public.profiles alter column status set default 'active';
-alter table public.profiles alter column status set not null;
-
-do $$ begin
-  alter table public.profiles
-    add constraint profiles_leader_only_for_students
-    check (role = 'student' or leader_id is null);
-exception when duplicate_object then null; end $$;
-
-do $$ begin
-  alter table public.profiles
-    add constraint profiles_account_status_check
-    check (status in ('active', 'frozen'));
-exception when duplicate_object then null; end $$;
-
-create index if not exists profiles_role_idx on public.profiles (role);
-create index if not exists profiles_leader_idx on public.profiles (leader_id);
-create index if not exists profiles_email_idx on public.profiles (email);
-create index if not exists profiles_status_idx on public.profiles (status);
 
 create or replace function public.handle_new_auth_user()
 returns trigger
@@ -353,6 +353,44 @@ create table if not exists public.file_download_logs (
 
 create index if not exists file_download_logs_file_idx on public.file_download_logs (file_id, downloaded_at desc);
 
+create table if not exists public.records (
+  id uuid primary key default gen_random_uuid(),
+  type text not null check (type in ('donate', 'contact', 'enrollment', 'subscribe')),
+  email text,
+  name text,
+  payload jsonb,
+  content text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists records_type_idx on public.records (type, created_at desc);
+create index if not exists records_email_idx on public.records (email);
+
+create table if not exists public.ladder_authorizations (
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  enabled boolean not null default false,
+  status text not null default 'none'
+    check (status in ('none', 'requested', 'approved', 'rejected')),
+  requested_at timestamptz,
+  reviewed_at timestamptz,
+  reviewed_by uuid references public.profiles(id),
+  rejection_reason text
+);
+
+create index if not exists ladder_authorizations_status_idx
+  on public.ladder_authorizations (status, requested_at desc);
+
+create table if not exists public.ladder_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  storage_bucket text not null,
+  storage_path text not null,
+  created_by uuid references public.profiles(id),
+  captured_at timestamptz not null default now()
+);
+
+create index if not exists ladder_snapshots_captured_idx
+  on public.ladder_snapshots (captured_at desc);
+
 -- Reporting helpers (used by the admin dashboard/reports API)
 create or replace function public.report_student_status_counts(_leader_id uuid default null)
 returns table(student_status text, total bigint, frozen bigint)
@@ -469,6 +507,9 @@ alter table public.files enable row level security;
 alter table public.file_permissions enable row level security;
 alter table public.file_access_requests enable row level security;
 alter table public.file_download_logs enable row level security;
+alter table public.records enable row level security;
+alter table public.ladder_authorizations enable row level security;
+alter table public.ladder_snapshots enable row level security;
 
 drop policy if exists "profiles_select" on public.profiles;
 create policy "profiles_select" on public.profiles
@@ -778,8 +819,6 @@ create policy "file_download_logs_select" on public.file_download_logs
   for select
   using (public.is_super_admin());
 
-alter table public.records enable row level security;
-
 drop policy if exists "records select super_admin" on public.records;
 create policy "records select super_admin" on public.records
   for select
@@ -796,6 +835,52 @@ drop policy if exists "records delete super_admin" on public.records;
 create policy "records delete super_admin" on public.records
   for delete
   to authenticated
+  using (public.is_super_admin());
+
+drop policy if exists "records insert anon" on public.records;
+create policy "records insert anon" on public.records
+  for insert
+  to anon, authenticated
+  with check (true);
+
+drop policy if exists "ladder_authorizations select super_admin" on public.ladder_authorizations;
+create policy "ladder_authorizations select super_admin" on public.ladder_authorizations
+  for select
+  using (public.is_super_admin());
+
+drop policy if exists "ladder_authorizations insert super_admin" on public.ladder_authorizations;
+create policy "ladder_authorizations insert super_admin" on public.ladder_authorizations
+  for insert
+  with check (public.is_super_admin());
+
+drop policy if exists "ladder_authorizations update super_admin" on public.ladder_authorizations;
+create policy "ladder_authorizations update super_admin" on public.ladder_authorizations
+  for update
+  using (public.is_super_admin());
+
+drop policy if exists "ladder_authorizations delete super_admin" on public.ladder_authorizations;
+create policy "ladder_authorizations delete super_admin" on public.ladder_authorizations
+  for delete
+  using (public.is_super_admin());
+
+drop policy if exists "ladder_snapshots select super_admin" on public.ladder_snapshots;
+create policy "ladder_snapshots select super_admin" on public.ladder_snapshots
+  for select
+  using (public.is_super_admin());
+
+drop policy if exists "ladder_snapshots insert super_admin" on public.ladder_snapshots;
+create policy "ladder_snapshots insert super_admin" on public.ladder_snapshots
+  for insert
+  with check (public.is_super_admin());
+
+drop policy if exists "ladder_snapshots update super_admin" on public.ladder_snapshots;
+create policy "ladder_snapshots update super_admin" on public.ladder_snapshots
+  for update
+  using (public.is_super_admin());
+
+drop policy if exists "ladder_snapshots delete super_admin" on public.ladder_snapshots;
+create policy "ladder_snapshots delete super_admin" on public.ladder_snapshots
+  for delete
   using (public.is_super_admin());
 
 alter table storage.objects enable row level security;
