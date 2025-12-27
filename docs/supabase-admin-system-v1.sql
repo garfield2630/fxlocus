@@ -35,12 +35,20 @@ create table if not exists public.profiles (
 );
 
 alter table public.profiles
+  add column if not exists full_name text,
+  add column if not exists phone text,
+  add column if not exists leader_id uuid references public.profiles(id) on delete set null,
+  add column if not exists student_status public.student_status,
   add column if not exists status text,
   add column if not exists last_login_at timestamptz;
 
 update public.profiles set status = 'active' where status is null;
 alter table public.profiles alter column status set default 'active';
 alter table public.profiles alter column status set not null;
+
+update public.profiles set student_status = '普通学员' where student_status is null;
+alter table public.profiles alter column student_status set default '普通学员';
+alter table public.profiles alter column student_status set not null;
 
 do $$ begin
   alter table public.profiles
