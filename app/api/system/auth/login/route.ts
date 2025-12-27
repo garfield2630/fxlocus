@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
-function normalizeRole(input: unknown) {
-  const v = typeof input === "string" ? input.trim() : "";
-  if (v === "超管" || v === "super_admin") return "super_admin";
-  if (v === "团队长" || v === "team_leader" || v === "leader") return "team_leader";
-  if (v === "学员" || v === "student") return "student";
+type NormalizedRole = "super_admin" | "leader" | "student";
+
+function normalizeRole(input: unknown): NormalizedRole | null {
+  const value = typeof input === "string" ? input.trim() : "";
+  if (value === "\u8d85\u7ba1" || value === "super_admin") return "super_admin";
+  if (value === "\u56e2\u961f\u957f" || value === "team_leader" || value === "leader") return "leader";
+  if (value === "\u5b66\u5458" || value === "student") return "student";
   return null;
 }
 
@@ -23,18 +26,29 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = (await req.json().catch(() => null)) as any;
-    const email = String(body?.email ?? "").trim();
-    const password = String(body?.password ?? "").trim();
-    const expectedRole = normalizeRole(body?.role ?? body?.accountType);
+    const email = String(body?.email ?? body?.username ?? "").trim();
+    const password = String(body?.password ?? body?.pwd ?? "").trim();
+    const roleRaw =
+      body?.role ??
+      body?.accountType ??
+      body?.type ??
+      body?.loginAs ??
+      body?.identity;
+    const expectedRole = normalizeRole(roleRaw);
 
     if (!email || !password) {
-      return NextResponse.json({ error: "Missing email/password" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing email/password", got: { keys: body ? Object.keys(body) : null } },
+        { status: 400 }
+      );
     }
     if (!expectedRole) {
-      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid role", roleRaw, got: { keys: body ? Object.keys(body) : null } },
+        { status: 400 }
+      );
     }
 
-    // 1) 用 SSR client 登录，写 cookie
     const cookieStore = cookies();
     const supabase = createServerClient(url, anon, {
       cookies: {
@@ -45,8 +59,8 @@ export async function POST(req: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);
           });
-        },
-      },
+        }
+      }
     });
 
     const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
@@ -57,11 +71,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2) 用 admin client 查 profiles（绕过 RLS）
     const admin = createSupabaseAdminClient();
     const { data: profile, error: pErr } = await admin
       .from("profiles")
-      .select("id,email,role") // 只查你肯定有的列，避免列不存在
+      .select("id,email,role")
       .eq("id", data.user.id)
       .maybeSingle();
 
