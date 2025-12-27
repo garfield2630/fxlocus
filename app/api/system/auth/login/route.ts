@@ -1,99 +1,95 @@
 import { NextRequest, NextResponse } from "next/server";
-
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
-type NormalizedRole = "super_admin" | "leader" | "student";
-
-function normalizeRole(input: unknown): NormalizedRole | null {
-  const value = typeof input === "string" ? input.trim() : "";
-  if (value === "\u8d85\u7ba1" || value === "super_admin") return "super_admin";
-  if (value === "\u56e2\u961f\u957f" || value === "leader") return "leader";
-  if (value === "\u5b66\u5458" || value === "student") return "student";
+function normalizeRole(input: unknown) {
+  const v = typeof input === "string" ? input.trim() : "";
+  if (v === "超管" || v === "super_admin") return "super_admin";
+  if (v === "团队长" || v === "team_leader" || v === "leader") return "team_leader";
+  if (v === "学员" || v === "student") return "student";
   return null;
 }
 
-function json(payload: unknown, status = 200) {
-  return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
-}
-
 export async function POST(req: NextRequest) {
-  let supabase: ReturnType<typeof createSupabaseServerClient> | null = null;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anon) {
+    return NextResponse.json({ error: "Missing env", url: !!url, anon: !!anon }, { status: 500 });
+  }
 
   try {
-    const body = await req.json().catch(() => null);
-    const email = String(body?.email ?? body?.identifier ?? "").trim();
+    const body = (await req.json().catch(() => null)) as any;
+    const email = String(body?.email ?? "").trim();
     const password = String(body?.password ?? "").trim();
-    const expectedRole = normalizeRole(body?.role ?? body?.loginAs);
+    const expectedRole = normalizeRole(body?.role ?? body?.accountType);
 
     if (!email || !password) {
-      return json({ error: "Missing email/password" }, 400);
+      return NextResponse.json({ error: "Missing email/password" }, { status: 400 });
     }
     if (!expectedRole) {
-      return json({ error: "Invalid role" }, 400);
+      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
-    supabase = createSupabaseServerClient();
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password
+    // 1) 用 SSR client 登录，写 cookie
+    const cookieStore = cookies();
+    const supabase = createServerClient(url, anon, {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
+      },
     });
 
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError || !data?.user) {
-      return json(
+      return NextResponse.json(
         { error: "Invalid credentials", message: signInError?.message ?? null },
-        401
+        { status: 401 }
       );
     }
 
+    // 2) 用 admin client 查 profiles（绕过 RLS）
     const admin = createSupabaseAdminClient();
-    const { data: profile, error: profileError } = await admin
+    const { data: profile, error: pErr } = await admin
       .from("profiles")
-      .select("id,email,role,leader_id,status")
+      .select("id,email,role") // 只查你肯定有的列，避免列不存在
       .eq("id", data.user.id)
       .maybeSingle();
 
-    if (profileError) {
+    if (pErr) {
+      console.error("profiles query error:", pErr);
       await supabase.auth.signOut();
-      return json(
-        { error: "Profile query failed", message: profileError.message },
-        500
-      );
+      return NextResponse.json({ error: "Profile query failed", message: pErr.message }, { status: 500 });
     }
 
     if (!profile) {
       await supabase.auth.signOut();
-      return json(
-        { error: "Profile not found (trigger may not have run)" },
-        500
+      return NextResponse.json(
+        { error: "Profile missing", hint: "Run backfill: insert missing profiles from auth.users" },
+        { status: 500 }
       );
-    }
-
-    if (profile.status === "frozen") {
-      await supabase.auth.signOut();
-      return json({ error: "ACCOUNT_FROZEN" }, 403);
     }
 
     if (profile.role !== expectedRole) {
       await supabase.auth.signOut();
-      return json(
+      return NextResponse.json(
         { error: "NO_PERMISSION", expectedRole, actualRole: profile.role },
-        403
+        { status: 403 }
       );
     }
 
-    return json({ ok: true, role: profile.role });
+    return NextResponse.json({ ok: true, role: profile.role });
   } catch (e: any) {
-    if (supabase) {
-      try {
-        await supabase.auth.signOut();
-      } catch {
-        // ignore
-      }
-    }
-    return json({ error: "Unhandled", message: e?.message ?? "Unknown" }, 500);
+    console.error("login route crashed:", e);
+    return NextResponse.json({ error: "Unhandled", message: e?.message ?? String(e) }, { status: 500 });
   }
 }
