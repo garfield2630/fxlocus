@@ -14,11 +14,14 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
   const locale = params.locale === "en" ? "en" : "zh";
   const [identifier, setIdentifier] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [loginRole, setLoginRole] = React.useState<"student" | "leader" | "super_admin">("student");
+  const [loginRole, setLoginRole] = React.useState<"" | "student" | "leader" | "super_admin">("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [captchaOk, setCaptchaOk] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const canStartCaptcha = Boolean(loginRole && identifier.trim() && password.trim());
+  const captchaResetSignal = `${loginRole}|${identifier.trim()}|${password.trim()}`;
 
   React.useEffect(() => {
     const html = document.documentElement;
@@ -44,8 +47,12 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!loginRole) {
+      setError(locale === "zh" ? "请选择账号类型" : "Select account type.");
+      return;
+    }
     if (!captchaOk) {
-      setError(locale === "zh" ? "请先完成滑块验证" : "Complete the slider verification first.");
+      setError(locale === "zh" ? "请先完成图形拖动验证" : "Complete the drag verification first.");
       return;
     }
     setLoading(true);
@@ -113,26 +120,25 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
             </div>
 
             <div className="mt-6 space-y-3">
-              <div className="grid grid-cols-3 gap-2">
-                {([
-                  { v: "student", zh: "学员", en: "Student" },
-                  { v: "leader", zh: "团队长", en: "Leader" },
-                  { v: "super_admin", zh: "超管", en: "Super Admin" }
-                ] as const).map((opt) => (
-                  <button
-                    key={opt.v}
-                    type="button"
-                    onClick={() => setLoginRole(opt.v)}
-                    className={[
-                      "rounded-2xl border px-3 py-2 text-sm transition-colors",
-                      loginRole === opt.v
-                        ? "bg-white/10 border-white/20 text-white"
-                        : "bg-white/5 border-white/10 text-white/70 hover:bg-white/8 hover:text-white"
-                    ].join(" ")}
-                  >
-                    {locale === "zh" ? opt.zh : opt.en}
-                  </button>
-                ))}
+              <div className="relative">
+                <select
+                  value={loginRole}
+                  onChange={(e) => setLoginRole(e.target.value as any)}
+                  className="w-full rounded-2xl bg-[#050a14] border border-white/10 px-4 py-3 text-white/85 text-sm focus:outline-none focus:border-white/30"
+                  required
+                >
+                  <option value="" disabled>
+                    {locale === "zh" ? "请选择账号类型（学员 / 团队长 / 超管）" : "Select account type"}
+                  </option>
+                  <option value="student">{locale === "zh" ? "学员" : "Student"}</option>
+                  <option value="leader">{locale === "zh" ? "团队长" : "Leader"}</option>
+                  <option value="super_admin">{locale === "zh" ? "超管" : "Super Admin"}</option>
+                </select>
+                <div className="mt-2 text-xs text-white/45">
+                  {locale === "zh"
+                    ? "账号类型必须与实际权限一致，否则会提示“账号类型不匹配”。"
+                    : "Account type must match your profile role."}
+                </div>
               </div>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
@@ -167,12 +173,17 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              <SliderCaptcha locale={locale} onChange={setCaptchaOk} />
+              <SliderCaptcha
+                locale={locale}
+                disabled={!canStartCaptcha || loading}
+                resetSignal={captchaResetSignal}
+                onChange={setCaptchaOk}
+              />
             </div>
 
             <button
               type="submit"
-              disabled={loading || !identifier.trim() || !password.trim() || !captchaOk}
+              disabled={loading || !loginRole || !identifier.trim() || !password.trim() || !captchaOk}
               className="mt-6 w-full px-4 py-3 rounded-2xl bg-white/10 border border-white/20 text-white hover:bg-white/15 disabled:opacity-50"
             >
               {loading ? (locale === "zh" ? "登录中..." : "Signing in...") : locale === "zh" ? "登录" : "Sign in"}
