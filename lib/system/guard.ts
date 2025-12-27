@@ -69,10 +69,18 @@ export async function getSystemContext(): Promise<{
 }> {
   const supabase = createSupabaseServerClient();
   const {
-    data: { user: authUser }
-  } = await supabase.auth.getUser();
+    data: { session }
+  } = await supabase.auth.getSession();
+  let authUser = session?.user ?? null;
+  if (!authUser?.id) {
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    authUser = user ?? null;
+  }
 
   if (!authUser?.id) throw err("UNAUTHORIZED");
+  if (session?.expires_at && session.expires_at * 1000 <= Date.now()) throw err("UNAUTHORIZED");
 
   const profile = await fetchProfileWithFallback(supabase, authUser.id);
   if (!profile?.id) throw err("UNAUTHORIZED");

@@ -70,17 +70,27 @@ export async function getSystemAuth() {
   try {
     const supabase = createSupabaseServerClient();
     const {
-      data: { user }
-    } = await supabase.auth.getUser();
-    if (!user?.id) return { ok: false as const, reason: "NO_SESSION" as const };
+      data: { session }
+    } = await supabase.auth.getSession();
+    let authUser = session?.user ?? null;
+    if (!authUser?.id) {
+      const {
+        data: { user }
+      } = await supabase.auth.getUser();
+      authUser = user ?? null;
+    }
+    if (!authUser?.id) return { ok: false as const, reason: "NO_SESSION" as const };
+    if (session?.expires_at && session.expires_at * 1000 <= Date.now()) {
+      return { ok: false as const, reason: "NO_SESSION" as const };
+    }
 
-    const { profile, adminError } = await fetchProfileWithFallback(supabase, user.id);
+    const { profile, adminError } = await fetchProfileWithFallback(supabase, authUser.id);
     if (!profile?.id) {
       if (adminError) return { ok: false as const, reason: "PROFILE_QUERY_FAILED" as const };
       return { ok: false as const, reason: "NO_PROFILE" as const };
     }
 
-    const email = String(profile.email || user.email || "").trim().toLowerCase();
+    const email = String(profile.email || authUser.email || "").trim().toLowerCase();
     if (!email) return { ok: false as const, reason: "NO_EMAIL" as const };
 
     if ((profile as any).status === "frozen") return { ok: false as const, reason: "FROZEN" as const };

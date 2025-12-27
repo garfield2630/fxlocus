@@ -59,10 +59,12 @@ export default async function middleware(request: NextRequest) {
         );
 
         const {
-          data: { user }
-        } = await supabase.auth.getUser();
+          data: { session }
+        } = await supabase.auth.getSession();
+        const user = session?.user ?? null;
+        const expired = session?.expires_at && session.expires_at * 1000 <= Date.now();
 
-        if (!isSystemPublic && !user) {
+        if (!isSystemPublic && (!user || expired)) {
           const url = request.nextUrl.clone();
           url.pathname = `/${locale}/system/login`;
           url.searchParams.set("next", pathname + request.nextUrl.search);

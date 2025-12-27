@@ -233,6 +233,7 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
       const res = await fetch("/api/system/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ identifier, password, role: loginRole })
       });
       const json = (await res.json().catch(() => null)) as LoginResponse | null;
