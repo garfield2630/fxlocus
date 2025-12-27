@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React from "react";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, Lock, Mail } from "lucide-react";
 
 import { SliderCaptcha } from "@/components/system/SliderCaptcha";
 import { isAdminRole } from "@/lib/system/roles";
@@ -66,11 +66,19 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
       if (!res.ok || !json?.ok) {
         const code = String((json as any)?.error || "");
         if (code === "ROLE_MISMATCH") {
-          setError(locale === "zh" ? "账号类型不匹配" : "Account type mismatch.");
+          setError(
+            locale === "zh"
+              ? "账号类型不匹配，请检查选择的账号类型（权限）"
+              : "Account type mismatch. Please check the selected account type."
+          );
         } else if (code === "INVALID_EMAIL") {
           setError(locale === "zh" ? "邮箱格式不正确" : "Invalid email format.");
         } else if (code === "INVALID_CREDENTIALS") {
-          setError(locale === "zh" ? "邮箱或密码错误" : "Invalid credentials.");
+          setError(
+            locale === "zh"
+              ? "账号或密码错误，请仔细检查账号、密码以及账号类型（权限）"
+              : "Invalid credentials. Please check email/password and account type."
+          );
         } else {
           setError(locale === "zh" ? "登录失败，请稍后重试" : "Sign in failed.");
         }
@@ -124,7 +132,10 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
                 <select
                   value={loginRole}
                   onChange={(e) => setLoginRole(e.target.value as any)}
-                  className="w-full rounded-2xl bg-[#050a14] border border-white/10 px-4 py-3 text-white/85 text-sm focus:outline-none focus:border-white/30"
+                  className={[
+                    "w-full appearance-none rounded-2xl bg-white/5 border border-white/10 px-4 py-3 pr-10 text-sm focus:outline-none focus:border-white/30",
+                    loginRole ? "text-white/85" : "text-white/50"
+                  ].join(" ")}
                   required
                 >
                   <option value="" disabled>
@@ -134,11 +145,7 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
                   <option value="leader">{locale === "zh" ? "团队长" : "Leader"}</option>
                   <option value="super_admin">{locale === "zh" ? "超管" : "Super Admin"}</option>
                 </select>
-                <div className="mt-2 text-xs text-white/45">
-                  {locale === "zh"
-                    ? "账号类型必须与实际权限一致，否则会提示“账号类型不匹配”。"
-                    : "Account type must match your profile role."}
-                </div>
+                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
               </div>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
