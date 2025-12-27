@@ -1,3 +1,4 @@
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/ssr";
 import { isAdminRole, isSuperAdmin, type SystemRole } from "@/lib/system/roles";
 
@@ -11,8 +12,23 @@ export type SystemUserSafe = {
   phone: string | null;
   role: SystemRole;
   leader_id: string | null;
-  student_status: "普通学员" | "考核通过" | "学习中" | "捐赠学员";
+  student_status:
+    | "\u666e\u901a\u5b66\u5458"
+    | "\u8003\u6838\u901a\u8fc7"
+    | "\u5b66\u4e60\u4e2d"
+    | "\u6350\u8d60\u5b66\u5458";
   status: SystemStatus;
+};
+
+type ProfileRow = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  phone: string | null;
+  role: string;
+  leader_id: string | null;
+  student_status: string | null;
+  status: string | null;
 };
 
 function err(code: string) {
@@ -21,7 +37,36 @@ function err(code: string) {
   return e;
 }
 
-export async function getSystemContext(): Promise<{ user: SystemUserSafe; supabase: ReturnType<typeof createSupabaseServerClient> }> {
+async function fetchProfileWithFallback(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  userId: string
+) {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id,email,full_name,phone,role,leader_id,student_status,status")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profile?.id) return profile as ProfileRow;
+
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data: adminProfile, error: adminErr } = await admin
+      .from("profiles")
+      .select("id,email,full_name,phone,role,leader_id,student_status,status")
+      .eq("id", userId)
+      .maybeSingle();
+    if (adminErr) return null;
+    return adminProfile as ProfileRow | null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getSystemContext(): Promise<{
+  user: SystemUserSafe;
+  supabase: ReturnType<typeof createSupabaseServerClient>;
+}> {
   const supabase = createSupabaseServerClient();
   const {
     data: { user: authUser }
@@ -29,13 +74,7 @@ export async function getSystemContext(): Promise<{ user: SystemUserSafe; supaba
 
   if (!authUser?.id) throw err("UNAUTHORIZED");
 
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("id,email,full_name,phone,role,leader_id,student_status,status")
-    .eq("id", authUser.id)
-    .maybeSingle();
-
-  if (error) throw err("UNAUTHORIZED");
+  const profile = await fetchProfileWithFallback(supabase, authUser.id);
   if (!profile?.id) throw err("UNAUTHORIZED");
 
   const email = String(profile.email || authUser.email || "").trim().toLowerCase();
