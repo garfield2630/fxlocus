@@ -16,19 +16,22 @@ function normalizeRole(input: unknown): NormalizedRole | null {
   return null;
 }
 
+function json(payload: unknown, status = 200) {
+  return NextResponse.json(payload, { status, headers: { "Cache-Control": "no-store" } });
+}
+
 export async function POST(req: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anon) {
-    return NextResponse.json({ error: "Missing env", url: !!url, anon: !!anon }, { status: 500 });
+    return json({ error: "Missing env", url: !!url, anon: !!anon }, 500);
   }
 
   try {
     const body = (await req.json().catch(() => null)) as any;
-const email = String(body?.email ?? body?.identifier ?? body?.username ?? "").trim();
-const password = String(body?.password ?? body?.pwd ?? "").trim();
-
+    const email = String(body?.email ?? body?.identifier ?? body?.username ?? "").trim();
+    const password = String(body?.password ?? body?.pwd ?? "").trim();
     const roleRaw =
       body?.role ??
       body?.accountType ??
@@ -38,19 +41,26 @@ const password = String(body?.password ?? body?.pwd ?? "").trim();
     const expectedRole = normalizeRole(roleRaw);
 
     if (!email || !password) {
-      return NextResponse.json(
+      return json(
         { error: "Missing email/password", got: { keys: body ? Object.keys(body) : null } },
-        { status: 400 }
+        400
       );
     }
     if (!expectedRole) {
-      return NextResponse.json(
+      return json(
         { error: "Invalid role", roleRaw, got: { keys: body ? Object.keys(body) : null } },
-        { status: 400 }
+        400
       );
     }
 
     const cookieStore = cookies();
+    const host = req.headers.get("host") || "";
+    const hostName = host.split(":")[0] || "";
+    const cookieDomain =
+      hostName === "fxlocus.com" || hostName.endsWith(".fxlocus.com") ? ".fxlocus.com" : undefined;
+    const forwardedProto = req.headers.get("x-forwarded-proto") || "";
+    const isSecure = forwardedProto === "https" || req.nextUrl.protocol === "https:";
+
     const supabase = createServerClient(url, anon, {
       cookies: {
         getAll() {
@@ -61,77 +71,77 @@ const password = String(body?.password ?? body?.pwd ?? "").trim();
             cookieStore.set(name, value, options);
           });
         }
+      },
+      cookieOptions: {
+        path: "/",
+        sameSite: "lax",
+        secure: isSecure,
+        domain: cookieDomain
       }
     });
 
     const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError || !data?.user) {
-      return NextResponse.json(
+      return json(
         { error: "Invalid credentials", message: signInError?.message ?? null },
-        { status: 401 }
+        401
       );
     }
 
     const admin = createSupabaseAdminClient();
     const { data: profile, error: pErr } = await admin
       .from("profiles")
-      .select("id,email,role")
+      .select("id,email,full_name,role")
       .eq("id", data.user.id)
       .maybeSingle();
 
     if (pErr) {
       console.error("profiles query error:", pErr);
       await supabase.auth.signOut();
-      return NextResponse.json({ error: "Profile query failed", message: pErr.message }, { status: 500 });
+      return json({ error: "Profile query failed", message: pErr.message }, 500);
     }
 
     if (!profile) {
       await supabase.auth.signOut();
-      return NextResponse.json(
+      return json(
         { error: "Profile missing", hint: "Run backfill: insert missing profiles from auth.users" },
-        { status: 500 }
+        500
       );
     }
 
     if (profile.role !== expectedRole) {
       await supabase.auth.signOut();
-      return NextResponse.json(
+      return json(
         { error: "NO_PERMISSION", expectedRole, actualRole: profile.role },
-        { status: 403 }
+        403
       );
     }
 
-    return NextResponse.json({
-  ok: true,
-  role: profile.role,
-
-  // 兼容前端可能写的 result.data.role
-  data: {
-    role: profile.role,
-    profile: {
-      id: profile.id,
-      email: profile.email,
-      role: profile.role
-    }
-  },
-
-  // 兼容 result.profile.role
-  profile: {
-    id: profile.id,
-    email: profile.email,
-    role: profile.role
-  },
-
-  // 兼容某些写法 result.user / result.user.role（虽然 role 通常不在 user 上）
-  user: {
-    id: profile.id,
-    email: profile.email,
-    role: profile.role
-  }
-});
-
+    return json({
+      ok: true,
+      role: profile.role,
+      data: {
+        role: profile.role,
+        profile: {
+          id: profile.id,
+          email: profile.email,
+          role: profile.role
+        }
+      },
+      profile: {
+        id: profile.id,
+        email: profile.email,
+        role: profile.role
+      },
+      user: {
+        id: profile.id,
+        email: profile.email,
+        full_name: profile.full_name ?? null,
+        role: profile.role
+      }
+    });
   } catch (e: any) {
     console.error("login route crashed:", e);
-    return NextResponse.json({ error: "Unhandled", message: e?.message ?? String(e) }, { status: 500 });
+    return json({ error: "Unhandled", message: e?.message ?? String(e) }, 500);
   }
 }
