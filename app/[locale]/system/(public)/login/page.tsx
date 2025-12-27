@@ -133,17 +133,23 @@ export default function SystemLoginPage({ params }: { params: { locale: "zh" | "
                   value={loginRole}
                   onChange={(e) => setLoginRole(e.target.value as any)}
                   className={[
-                    "w-full appearance-none rounded-2xl bg-white/5 border border-white/10 px-4 py-3 pr-10 text-sm focus:outline-none focus:border-white/30",
-                    loginRole ? "text-white/85" : "text-white/50"
+                    "w-full appearance-none rounded-2xl bg-white/10 border border-white/10 px-4 py-3 pr-10 text-sm transition-colors focus:outline-none focus:border-white/30 hover:bg-white/15",
+                    loginRole ? "text-white/90" : "text-white/70"
                   ].join(" ")}
                   required
                 >
-                  <option value="" disabled>
+                  <option value="" disabled style={{ color: "#64748b" }}>
                     {locale === "zh" ? "请选择账号类型（学员 / 团队长 / 超管）" : "Select account type"}
                   </option>
-                  <option value="student">{locale === "zh" ? "学员" : "Student"}</option>
-                  <option value="leader">{locale === "zh" ? "团队长" : "Leader"}</option>
-                  <option value="super_admin">{locale === "zh" ? "超管" : "Super Admin"}</option>
+                  <option value="student" style={{ color: "#0b1220" }}>
+                    {locale === "zh" ? "学员" : "Student"}
+                  </option>
+                  <option value="leader" style={{ color: "#0b1220" }}>
+                    {locale === "zh" ? "团队长" : "Leader"}
+                  </option>
+                  <option value="super_admin" style={{ color: "#0b1220" }}>
+                    {locale === "zh" ? "超管" : "Super Admin"}
+                  </option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
               </div>
