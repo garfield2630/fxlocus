@@ -26,8 +26,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = (await req.json().catch(() => null)) as any;
-    const email = String(body?.email ?? body?.username ?? "").trim();
-    const password = String(body?.password ?? body?.pwd ?? "").trim();
+const email = String(body?.email ?? body?.identifier ?? body?.username ?? "").trim();
+const password = String(body?.password ?? body?.pwd ?? "").trim();
+
     const roleRaw =
       body?.role ??
       body?.accountType ??
