@@ -1,3 +1,5 @@
+const DONATE_ROUTE_VERSION = "donate_v2_2025-12-27_01";
+console.log("DONATE_ROUTE_VERSION:", DONATE_ROUTE_VERSION);
 import { NextRequest, NextResponse } from "next/server";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
