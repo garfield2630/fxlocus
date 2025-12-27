@@ -101,7 +101,35 @@ const password = String(body?.password ?? body?.pwd ?? "").trim();
       );
     }
 
-    return NextResponse.json({ ok: true, role: profile.role });
+    return NextResponse.json({
+  ok: true,
+  role: profile.role,
+
+  // 兼容前端可能写的 result.data.role
+  data: {
+    role: profile.role,
+    profile: {
+      id: profile.id,
+      email: profile.email,
+      role: profile.role
+    }
+  },
+
+  // 兼容 result.profile.role
+  profile: {
+    id: profile.id,
+    email: profile.email,
+    role: profile.role
+  },
+
+  // 兼容某些写法 result.user / result.user.role（虽然 role 通常不在 user 上）
+  user: {
+    id: profile.id,
+    email: profile.email,
+    role: profile.role
+  }
+});
+
   } catch (e: any) {
     console.error("login route crashed:", e);
     return NextResponse.json({ error: "Unhandled", message: e?.message ?? String(e) }, { status: 500 });
