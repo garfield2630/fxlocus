@@ -7,6 +7,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 
 type NormalizedRole = "super_admin" | "leader" | "student";
+type ProfileRow = { id: string; email: string | null; role: string };
 
 function normalizeRole(input: unknown): NormalizedRole | null {
   const value = typeof input === "string" ? input.trim() : "";
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let profile: { id: string; email: string | null; role: string } | null = null;
+    let profile: ProfileRow | null = null;
     let adminError: string | null = null;
 
     try {
@@ -134,35 +135,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (profile.role !== expectedRole) {
+    const resolvedProfile = profile as ProfileRow;
+
+    if (resolvedProfile.role !== expectedRole) {
       await supabase.auth.signOut();
       return json(
-        { error: "NO_PERMISSION", expectedRole, actualRole: profile.role },
+        { error: "NO_PERMISSION", expectedRole, actualRole: resolvedProfile.role },
         403
       );
     }
 
     return json({
       ok: true,
-      role: profile.role,
+      role: resolvedProfile.role,
       data: {
-        role: profile.role,
+        role: resolvedProfile.role,
         profile: {
-          id: profile.id,
-          email: profile.email,
-          role: profile.role
+          id: resolvedProfile.id,
+          email: resolvedProfile.email,
+          role: resolvedProfile.role
         }
       },
       profile: {
-        id: profile.id,
-        email: profile.email,
-        role: profile.role
+        id: resolvedProfile.id,
+        email: resolvedProfile.email,
+        role: resolvedProfile.role
       },
       user: {
-        id: profile.id,
-        email: profile.email,
+        id: resolvedProfile.id,
+        email: resolvedProfile.email,
         full_name: null,
-        role: profile.role
+        role: resolvedProfile.role
       }
     });
   } catch (e: any) {
